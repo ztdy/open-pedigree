@@ -1,0 +1,10 @@
+node_modules/
+renderer/
+.win/
+release/
+build/icon.png
+m0-smoke.png
+*-result.json
+# dev screenshots / intermediate artifacts
+shot*.png
+s2b-stage.txt

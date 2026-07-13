@@ -1,0 +1,82 @@
+{
+  "name": "open-pedigree-desktop",
+  "productName": "Open Pedigree",
+  "version": "1.0.0",
+  "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
+  "private": true,
+  "author": "Open Pedigree Desktop",
+  "license": "LGPL-2.1",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "stage": "node stage.js",
+    "icon": "python3 build/make-icon.py",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "dist:nsis": "electron-builder --win nsis",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^41.10.1",
+    "electron-builder": "^26.15.6"
+  },
+  "build": {
+    "appId": "org.phenotips.openpedigree.desktop",
+    "productName": "Open Pedigree",
+    "copyright": "Open Pedigree — LGPL-2.1. Source: https://github.com/phenotips/open-pedigree",
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true
+    },
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "documentStore.js",
+      "importDetect.js",
+      "libraryConfig.js",
+      "offlineData.js",
+      "library.html",
+      "data/**/*",
+      "renderer/**/*",
+      "package.json",
+      "!**/*.map",
+      "!renderer/public/vendor/font-awesome/scss/**/*"
+    ],
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "OpenPedigree-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Open Pedigree",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "artifactName": "OpenPedigree-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "OpenPedigree-Portable-${version}.${ext}"
+    }
+  }
+}

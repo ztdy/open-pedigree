@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
+<title>Open Pedigree — Library</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #1f2430; --muted: #6b7280;
+    --line: #e3e6ea; --accent: #2f6fed; --accent-ink: #fff; --danger: #c0392b;
+    --shadow: 0 1px 3px rgba(20,30,50,.08), 0 1px 2px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171c; --panel:#1c2028; --ink:#e6e9ee; --muted:#9aa4b2;
+      --line:#2b313b; --accent:#4d84f5; --shadow:0 1px 3px rgba(0,0,0,.4); }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; }
+  header { position: sticky; top:0; background: var(--panel); border-bottom:1px solid var(--line);
+    padding: 14px 22px; display:flex; align-items:center; gap:16px; z-index:5; }
+  header h1 { font-size:16px; margin:0; font-weight:650; letter-spacing:.2px; }
+  header .spacer { flex:1; }
+  input[type=search] { background: var(--bg); border:1px solid var(--line); color:var(--ink);
+    border-radius:7px; padding:7px 11px; width:230px; outline:none; }
+  input[type=search]:focus { border-color: var(--accent); }
+  select { background: var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:7px 9px; }
+  button { font: inherit; cursor:pointer; border:1px solid var(--line); background:var(--panel);
+    color:var(--ink); border-radius:7px; padding:7px 13px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight:600; }
+  button.primary:hover { filter: brightness(1.05); }
+  main { padding: 22px; max-width: 1100px; margin: 0 auto; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:14px; }
+  .card { background: var(--panel); border:1px solid var(--line); border-radius:11px; padding:15px 16px;
+    box-shadow: var(--shadow); display:flex; flex-direction:column; gap:10px; min-height: 120px; }
+  .card .title { font-weight:600; font-size:15px; word-break: break-word; line-height:1.3; cursor: text; }
+  .card .clinical { font-size:12px; margin-top:6px; word-break:break-word; line-height:1.35; }
+  .card .clinical.genes { color: var(--text); font-weight:500; }
+  .card .clinical.tags { color: var(--muted); margin-top:2px; }
+  .card .meta { color: var(--muted); font-size:12px; margin-top:auto; padding-top:8px; }
+  .card .project-pick { display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .card .project-pick-label { color: var(--muted); font-size:12px; }
+  .card .project-pick select, .card .project-new-input { font-size:12px; padding:3px 6px; max-width:150px; }
+  .project-section { margin-bottom:22px; }
+  .project-header { font-size:13px; font-weight:600; color: var(--muted); text-transform:uppercase;
+    letter-spacing:.04em; padding:0 2px 8px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+  .card .row { display:flex; gap:7px; flex-wrap:wrap; }
+  .card .row button { padding:5px 10px; font-size:12.5px; }
+  .card.corrupt { border-color:#e0b4b4; background: color-mix(in srgb, var(--danger) 6%, var(--panel)); }
+  .badge { display:inline-block; font-size:11px; color:var(--danger); border:1px solid currentColor; border-radius:5px; padding:1px 6px; }
+  .empty { text-align:center; color:var(--muted); padding:70px 0; }
+  .empty h2 { color: var(--ink); font-weight:600; }
+  .rename-input { width:100%; font:inherit; font-weight:600; font-size:15px; padding:3px 6px;
+    border:1px solid var(--accent); border-radius:6px; background:var(--bg); color:var(--ink); }
+  .del { color: var(--danger); }
+  .del:hover { border-color: var(--danger); }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#333; color:#fff;
+    padding:9px 16px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:.95; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Open Pedigree</h1>
+    <button class="primary" id="btn-new">+ New pedigree</button>
+    <button id="btn-import">Import…</button>
+    <div class="spacer"></div>
+    <select id="project-filter" title="Project"></select>
+    <input type="search" id="search" placeholder="Search pedigrees…" autocomplete="off">
+    <select id="sort" title="Sort">
+      <option value="updated">Recently updated</option>
+      <option value="title">Title A–Z</option>
+    </select>
+  </header>
+  <main>
+    <div id="content"><div class="empty">Loading…</div></div>
+  </main>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+  var api = window.openPedigreeDesktop && window.openPedigreeDesktop.api;
+  var content = document.getElementById('content');
+  var searchEl = document.getElementById('search');
+  var sortEl = document.getElementById('sort');
+  var projectFilterEl = document.getElementById('project-filter');
+  var toastEl = document.getElementById('toast');
+  var docs = [];
+
+  var ALL = '__all__', UNGROUPED = '__ungrouped__', NEWPROJ = '__new__';
+  var UNGROUPED_LABEL = 'Ungrouped';
+
+  function projectsOf() {
+    var set = {};
+    docs.forEach(function (d) { if (d.project) { set[d.project] = true; } });
+    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b); });
+  }
+  function activeProject() { return projectFilterEl.value || ALL; }
+
+  // Rebuild the top project filter, preserving the current selection when still valid.
+  function populateProjectFilter() {
+    var prev = projectFilterEl.value || ALL;
+    var projects = projectsOf();
+    var hasUngrouped = docs.some(function (d) { return !d.project && !d.corrupt; });
+    var opts = ['<option value="' + ALL + '">All projects</option>'];
+    projects.forEach(function (p) { opts.push('<option value="' + esc(p) + '">' + esc(p) + '</option>'); });
+    if (hasUngrouped) { opts.push('<option value="' + UNGROUPED + '">' + UNGROUPED_LABEL + '</option>'); }
+    projectFilterEl.innerHTML = opts.join('');
+    // Restore selection if it still exists, else fall back to All.
+    var stillValid = prev === ALL || prev === UNGROUPED && hasUngrouped || projects.indexOf(prev) !== -1;
+    projectFilterEl.value = stillValid ? prev : ALL;
+  }
+
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    setTimeout(function () { toastEl.classList.remove('show'); }, 1800);
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try { var d = new Date(iso); return d.toLocaleString(); } catch (e) { return iso; }
+  }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  async function refresh() {
+    try { docs = await api.listDocuments(); }
+    catch (e) { content.innerHTML = '<div class="empty"><h2>Could not read the library</h2><p>' + esc(e.message || e) + '</p></div>'; return; }
+    populateProjectFilter();
+    render();
+  }
+
+  function sortDocs(list) {
+    if (sortEl.value === 'title') list.sort(function (a, b) { return String(a.title || '').localeCompare(String(b.title || '')); });
+    else list.sort(function (a, b) { return String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')); });
+    return list;
+  }
+
+  function filtered() {
+    var q = (searchEl.value || '').trim().toLowerCase();
+    var proj = activeProject();
+    var list = docs.filter(function (d) {
+      if (q && (d.title || '').toLowerCase().indexOf(q) === -1) return false;
+      if (proj === UNGROUPED) return !d.project;
+      if (proj !== ALL) return d.project === proj;
+      return true;
+    });
+    return sortDocs(list);
+  }
+
+  function render() {
+    var list = filtered();
+    if (!list.length) {
+      content.innerHTML = docs.length
+        ? '<div class="empty"><h2>No matches</h2></div>'
+        : '<div class="empty"><h2>No pedigrees yet</h2><p>Create your first one with “New pedigree”.</p></div>';
+      return;
+    }
+    content.innerHTML = '';
+    if (activeProject() === ALL) {
+      // Group into sections: named projects (A–Z) first, then Ungrouped.
+      var groups = {}; var order = [];
+      list.forEach(function (d) {
+        var key = d.project || '';
+        if (!groups[key]) { groups[key] = []; order.push(key); }
+        groups[key].push(d);
+      });
+      order.sort(function (a, b) { if (a === '') return 1; if (b === '') return -1; return a.localeCompare(b); });
+      order.forEach(function (key) {
+        var sec = document.createElement('div'); sec.className = 'project-section';
+        var h = document.createElement('div'); h.className = 'project-header';
+        h.textContent = (key || UNGROUPED_LABEL) + '  (' + groups[key].length + ')';
+        sec.appendChild(h);
+        var grid = document.createElement('div'); grid.className = 'grid';
+        groups[key].forEach(function (d) { grid.appendChild(card(d)); });
+        sec.appendChild(grid);
+        content.appendChild(sec);
+      });
+    } else {
+      var grid2 = document.createElement('div'); grid2.className = 'grid';
+      list.forEach(function (d) { grid2.appendChild(card(d)); });
+      content.appendChild(grid2);
+    }
+  }
+
+  function card(d) {
+    var el = document.createElement('div');
+    el.className = 'card' + (d.corrupt ? ' corrupt' : '');
+
+    var title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = d.title || '(untitled)';
+    if (d.corrupt) { var b = document.createElement('span'); b.className = 'badge'; b.textContent = 'unreadable'; title.appendChild(document.createTextNode(' ')); title.appendChild(b); }
+    el.appendChild(title);
+
+    if (!d.corrupt && d.clinical) {
+      var c = d.clinical;
+      if (c.genes && c.genes.length) {
+        var g = document.createElement('div'); g.className = 'clinical genes';
+        var extra = c.geneCount > c.genes.length ? (' +' + (c.geneCount - c.genes.length)) : '';
+        g.textContent = '🧬 ' + c.genes.join(', ') + extra;
+        el.appendChild(g);
+      }
+      var tags = [];
+      if (c.hpoCount) tags.push(c.hpoCount + ' HPO');
+      if (c.disorderCount) tags.push(c.disorderCount + (c.disorderCount === 1 ? ' disorder' : ' disorders'));
+      if (typeof c.people === 'number' && c.people) tags.push(c.people + (c.people === 1 ? ' person' : ' people'));
+      if (tags.length) {
+        var t = document.createElement('div'); t.className = 'clinical tags';
+        t.textContent = tags.join('  ·  ');
+        el.appendChild(t);
+      }
+    }
+
+    var meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = d.corrupt ? 'This file could not be parsed.' : ('Updated ' + fmtDate(d.updatedAt));
+    el.appendChild(meta);
+
+    if (!d.corrupt) { el.appendChild(projectControl(d)); }
+
+    var row = document.createElement('div'); row.className = 'row';
+    if (!d.corrupt) {
+      row.appendChild(btn('Open', 'primary', function () { api.openInEditor(d.documentId); }));
+      row.appendChild(btn('Rename', '', function () { startRename(title, d); }));
+      row.appendChild(btn('Duplicate', '', async function () { await api.copyDocument(d.documentId); toast('Duplicated'); refresh(); }));
+    }
+    row.appendChild(btn('Delete', 'del', async function () {
+      if (!confirm('Move “' + (d.title || 'this pedigree') + '” to the trash?')) return;
+      await api.trashDocument(d.documentId); toast('Moved to trash'); refresh();
+    }));
+    el.appendChild(row);
+
+    // Double-click title to rename.
+    title.addEventListener('dblclick', function () { if (!d.corrupt) startRename(title, d); });
+    return el;
+  }
+
+  function btn(label, cls, onClick) {
+    var b = document.createElement('button'); if (cls) b.className = cls; b.textContent = label;
+    b.addEventListener('click', onClick); return b;
+  }
+
+  // Per-card project picker: move a pedigree between projects (or into a brand-new one).
+  function projectControl(d) {
+    var wrap = document.createElement('div'); wrap.className = 'project-pick';
+    var label = document.createElement('span'); label.className = 'project-pick-label'; label.textContent = 'Project:';
+    wrap.appendChild(label);
+    var sel = document.createElement('select');
+    var projects = projectsOf();
+    var opts = [{ v: '', t: UNGROUPED_LABEL }];
+    projects.forEach(function (p) { opts.push({ v: p, t: p }); });
+    opts.push({ v: NEWPROJ, t: '＋ New project…' });
+    opts.forEach(function (o) {
+      var op = document.createElement('option'); op.value = o.v; op.textContent = o.t;
+      if (o.v === (d.project || '')) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.addEventListener('change', async function () {
+      if (sel.value === NEWPROJ) {
+        // Swap the select for an inline text input to name the new project.
+        var input = document.createElement('input'); input.className = 'project-new-input';
+        input.placeholder = 'New project name'; sel.replaceWith(input); input.focus();
+        var settle = async function (commit) {
+          var name = (input.value || '').trim();
+          if (commit && name) { await api.setProject(d.documentId, name); toast('Moved to “' + name + '”'); }
+          refresh();
+        };
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') settle(true); else if (e.key === 'Escape') settle(false);
+        });
+        input.addEventListener('blur', function () { settle(true); });
+        return;
+      }
+      await api.setProject(d.documentId, sel.value);
+      toast(sel.value ? ('Moved to “' + sel.value + '”') : 'Removed from project');
+      refresh();
+    });
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  function startRename(titleEl, d) {
+    var input = document.createElement('input');
+    input.className = 'rename-input'; input.value = d.title || '';
+    titleEl.replaceWith(input); input.focus(); input.select();
+    var done = false;
+    async function commit(save) {
+      if (done) return; done = true;
+      var name = input.value.trim();
+      if (save && name && name !== d.title) { await api.renameDocument(d.documentId, name); toast('Renamed'); }
+      refresh();
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') commit(true);
+      else if (e.key === 'Escape') commit(false);
+    });
+    input.addEventListener('blur', function () { commit(true); });
+  }
+
+  document.getElementById('btn-new').addEventListener('click', async function () {
+    // A new pedigree inherits whichever project is currently being viewed, so building a
+    // project is just: filter to it (or create it on a card) then keep hitting "New".
+    var proj = activeProject();
+    var opts = { title: 'Untitled pedigree' };
+    if (proj !== ALL && proj !== UNGROUPED) { opts.project = proj; }
+    try { await api.newInEditor(opts); }
+    catch (e) { toast('Could not create: ' + (e.message || e)); }
+  });
+  document.getElementById('btn-import').addEventListener('click', async function () {
+    try { var r = await api.importAsNew(); if (r && r.error) toast('Import failed: ' + r.error); }
+    catch (e) { toast('Import failed: ' + (e.message || e)); }
+  });
+  searchEl.addEventListener('input', render);
+  sortEl.addEventListener('change', render);
+  projectFilterEl.addEventListener('change', render);
+
+  if (!api) {
+    content.innerHTML = '<div class="empty"><h2>Desktop bridge unavailable</h2></div>';
+  } else {
+    refresh();
+  }
+})();
+</script>
+</body>
+</html>
