@@ -1,7 +1,7 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
@@ -24,6 +24,7 @@
     "appId": "org.phenotips.openpedigree.desktop",
     "productName": "Open Pedigree",
     "copyright": "Open Pedigree — LGPL-2.1. Source: https://github.com/phenotips/open-pedigree",
+    "electronVersion": "41.10.1",
     "asar": true,
     "electronFuses": {
       "runAsNode": false,
@@ -45,6 +46,7 @@
       "offlineData.js",
       "library.html",
       "data/**/*",
+      "fonts/**/*",
       "renderer/**/*",
       "package.json",
       "!**/*.map",

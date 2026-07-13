@@ -65,6 +65,17 @@ function registerOfflineDataProtocol() {
       // No OMIM database is bundled (licensing); serve an empty result so the disorders
       // picker degrades to free-text offline instead of firing failing XHRs + alert() spam.
       else if (kind === 'disorders') payload = { rows: [] };
+      // Serve the bundled CJK font so PDF export can embed Chinese glyphs offline.
+      else if (kind === 'fonts') {
+        const map = { sc: 'NotoSansSC-Regular.otf' };
+        const key = u.pathname.replace(/^\/+/, '') || 'sc';
+        const fname = map[key] || map.sc;
+        const buf = await fsp.readFile(path.join(__dirname, 'fonts', fname));
+        return new Response(buf, {
+          status: 200,
+          headers: { 'Content-Type': 'font/otf', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
       else return new Response('unknown dataset', { status: 404 });
       return new Response(JSON.stringify(payload), {
         status: 200,

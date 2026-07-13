@@ -9,6 +9,27 @@ var PedigreeExport = function () {
 PedigreeExport.prototype = {
 };
 
+// The 14 standard PDF fonts (Helvetica etc.) have no CJK glyphs, so Chinese names/terms
+// come out blank in exported PDFs. We lazily fetch a bundled Noto Sans SC font and embed it
+// (PDFKit subsets it, so the output stays small). The desktop shell serves it over the
+// privileged opdata:// scheme; on the web it's a best-effort relative fetch that degrades to
+// no-CJK if the font isn't present.
+var PDF_CJK_FONT = 'NotoSansSC';
+var _cjkFontPromise = null;
+function loadCJKFont() {
+  if (_cjkFontPromise) { return _cjkFontPromise; }
+  var isDesktop = typeof window !== 'undefined' && window.openPedigreeDesktop && window.openPedigreeDesktop.isDesktop;
+  var url = isDesktop ? 'opdata://fonts/sc' : 'vendor/fonts/NotoSansSC-Regular.otf';
+  _cjkFontPromise = fetch(url).then(function (r) {
+    if (!r.ok) { throw new Error('font HTTP ' + r.status); }
+    return r.arrayBuffer();
+  }).catch(function (e) {
+    console.warn('CJK font unavailable; PDF export will lack Chinese glyphs:', e && e.message || e);
+    return null;
+  });
+  return _cjkFontPromise;
+}
+
 //===============================================================================================
 
 /*
@@ -158,8 +179,9 @@ PedigreeExport.exportAsSVG = function(pedigree, privacySetting = 'all') {
 
 
 
-PedigreeExport.exportAsPDF = function(pedigree, privacySetting = 'all', pageSize = 'A4', layout = 'landscape', legendPos = 'TopRight'){
+PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pageSize = 'A4', layout = 'landscape', legendPos = 'TopRight'){
   var pedigreeImage = PedigreeExport.exportAsSVG(pedigree, privacySetting);
+  var cjkFont = await loadCJKFont();
 
   let legend = [];
   let itemCount = 0;
@@ -217,6 +239,19 @@ PedigreeExport.exportAsPDF = function(pedigree, privacySetting = 'all', pageSize
 
   let compress = false;
   let doc = new PDFDocument({compress: compress, size: pageSize, layout: layout});
+
+  // Embed the CJK font and make it the default so legend text (doc.text) renders Chinese.
+  // Noto Sans SC also covers Latin, so Latin names still look right. If the font failed to
+  // load we leave the standard font and fall back to the previous (no-CJK) behaviour.
+  if (cjkFont) {
+    try {
+      doc.registerFont(PDF_CJK_FONT, cjkFont);
+      doc.font(PDF_CJK_FONT);
+    } catch (e) {
+      console.warn('Could not embed CJK font in PDF:', e && e.message || e);
+      cjkFont = null;
+    }
+  }
 
   let stream = doc.pipe(blobStream());
   stream.on('finish', function () {
@@ -310,6 +345,10 @@ PedigreeExport.exportAsPDF = function(pedigree, privacySetting = 'all', pageSize
     height: pedigreeHeight,
     width: pedigreeWidth
   };
+  // Render the pedigree SVG's text (names, comments, labels) with the embedded CJK font too.
+  if (cjkFont) {
+    options.fontCallback = function() { return PDF_CJK_FONT; };
+  }
 
   SVGtoPDF(doc, pedigreeImage, pedigreeXOffset, pedigreeYOffset, options);
   doc.end();

@@ -184,7 +184,12 @@ var ExportSelector = Class.create( {
         var pageSize = $$('select[name="pdf-page-size"]')[0].value;
         var layout = $$('select[name="pdf-page-orientation"]')[0].value;
         var legendPos = $$('select[name="pdf-legend-pos"]')[0].value;
-        let pdf = PedigreeExport.exportAsPDF(editor.getGraph().DG, privacySetting, pageSize, layout, legendPos);
+        // exportAsPDF is async (it lazily fetches the embedded CJK font before building).
+        PedigreeExport.exportAsPDF(editor.getGraph().DG, privacySetting, pageSize, layout, legendPos)
+          .catch(function(e) {
+            console.error('PDF export failed', e);
+            alert('PDF export failed: ' + (e && e.message || e));
+          });
       }
     }
   },
