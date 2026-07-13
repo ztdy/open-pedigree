@@ -250,19 +250,10 @@ var Workspace = Class.create({
       var faIconClass = (direction == 'home') ? 'fa-user' : 'fa-arrow-' + direction;
       _this.__pan[direction] = new Element('span', {'class' : 'view-control-pan pan-' + direction + ' fa fa-fw ' + faIconClass, 'title' : 'Pan ' + direction});
       _this.__pan.insert(_this.__pan[direction]);
-      _this.__pan[direction].observe('click', function(event) {
-        if (direction == 'home') {
-          _this.centerAroundGraph();
-        } else if(direction == 'up') {
-          _this.panTo(_this.viewBoxX, _this.viewBoxY - 300);
-        } else if(direction == 'down') {
-          _this.panTo(_this.viewBoxX, _this.viewBoxY + 300);
-        } else if(direction == 'left') {
-          _this.panTo(_this.viewBoxX - 300, _this.viewBoxY);
-        } else {
-          _this.panTo(_this.viewBoxX + 300, _this.viewBoxY);
-        }
-      });
+      // NOTE: click handling for pan/zoom buttons is delegated on __controls (see below).
+      // These buttons carry `fa` classes, so FontAwesome's SVG-with-JS auto-replaces each
+      // one with a freshly-created <svg>, discarding the original node together with any
+      // observe('click') listener bound to it — hence the delegation.
     });
     // Zoom controls
     var trackLength = 200;
@@ -316,21 +307,38 @@ var Workspace = Class.create({
     } else {
       this.zoomSlider.setValue(0.5 * 0.9);  // 0.5 * 0.9 corresponds to zoomCoefficient of 0.75x
     }
-    this.__zoom['in'].observe('click', function(event) {
-      if (_this.zoomCoefficient < 0.25) {
-        _this.zoomSlider.setValue(0.9);
-      }   // zoom in from the any value below 0.25x goes to 0.25x (which is 0.9 on the slider)
-      else {
-        _this.zoomSlider.setValue(-(_this.zoomCoefficient - 1)*0.9);
-      }     // +0.25x
-    });
-    this.__zoom['out'].observe('click', function(event) {
-      if (_this.zoomCoefficient <= 0.25) {
-        _this.zoomSlider.setValue(1);
-      }     // zoom out from 0.25x goes to the final slider position
-      else {
-        _this.zoomSlider.setValue(-(_this.zoomCoefficient - 1.5)*0.9);
-      }   // -0.25x
+    // Delegated click handling for all pan/zoom buttons. Bound to __controls, which has no
+    // `fa` class and so is never replaced by FontAwesome; the replacement <svg> nodes keep
+    // their pan-*/zoom-* classes, so target.closest(...) still identifies the button. This
+    // is what makes the buttons respond to real mouse clicks (fork bug: FontAwesome had
+    // orphaned the original handler-bearing nodes — see the note in the pan loop above).
+    this.__controls.observe('click', function(event) {
+      var target = Event.element(event);
+      if (!target || !target.closest) { return; }
+      var hit = function(sel) { return target.closest(sel); };
+      if (hit('.pan-up')) {
+        _this.panTo(_this.viewBoxX, _this.viewBoxY - 300);
+      } else if (hit('.pan-down')) {
+        _this.panTo(_this.viewBoxX, _this.viewBoxY + 300);
+      } else if (hit('.pan-left')) {
+        _this.panTo(_this.viewBoxX - 300, _this.viewBoxY);
+      } else if (hit('.pan-right')) {
+        _this.panTo(_this.viewBoxX + 300, _this.viewBoxY);
+      } else if (hit('.pan-home')) {
+        _this.centerAroundGraph();
+      } else if (hit('.zoom-in')) {
+        if (_this.zoomCoefficient < 0.25) {
+          _this.zoomSlider.setValue(0.9);        // below 0.25x snaps to 0.25x (0.9 on the slider)
+        } else {
+          _this.zoomSlider.setValue(-(_this.zoomCoefficient - 1)*0.9);   // +0.25x
+        }
+      } else if (hit('.zoom-out')) {
+        if (_this.zoomCoefficient <= 0.25) {
+          _this.zoomSlider.setValue(1);          // from 0.25x goes to the final slider position
+        } else {
+          _this.zoomSlider.setValue(-(_this.zoomCoefficient - 1.5)*0.9); // -0.25x
+        }
+      }
     });
     // Insert all controls in the document
     this.getWorkArea().insert(this.__controls);

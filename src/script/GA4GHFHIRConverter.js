@@ -166,10 +166,12 @@ GA4GHFHIRConverter.initFromFHIR = function (inputText) {
         nameToID[nextPerson.properties.fName] = pedigreeID;
       }
     }
-    // only use externalID if id is not present
-    if (nextPerson.properties.hasOwnProperty('externalId')
+    // only use externalID if id is not present. (Key is `externalID` with a capital ID to
+    // match extractDataFromPatient / the pedigree model; the old lowercase `externalId`
+    // was never populated, so this branch was dead — part of upstream #67.)
+    if (nextPerson.properties.hasOwnProperty('externalID')
       && !hasID.hasOwnProperty(pedigreeID)) {
-      externalIDToID[nextPerson.properties.externalId] = pedigreeID;
+      externalIDToID[nextPerson.properties.externalID] = pedigreeID;
       hasID[pedigreeID] = true;
     }
 
@@ -596,6 +598,13 @@ GA4GHFHIRConverter.extractDataFromPatient = function (patientResource,
   };
 
   properties.id = patientResource.id;
+  // externalID / Identifier round-trip (fixes upstream #67). The key must be `externalID`
+  // (capital ID) to match the pedigree Person model — these properties are passed straight
+  // to _addVertex as node properties.
+  if (Array.isArray(patientResource.identifier) && patientResource.identifier.length
+      && patientResource.identifier[0] && patientResource.identifier[0].value) {
+    properties.externalID = String(patientResource.identifier[0].value);
+  }
   properties.gender = 'U';
   if (patientResource.gender === 'male') {
     properties.gender = 'M';
@@ -1291,6 +1300,14 @@ GA4GHFHIRConverter.buildPedigreeIndividual = function (containedId, nodeProperti
       }
     }
   }
+
+  // externalID / Identifier round-trip (fixes upstream #67): the user-entered identifier
+  // was never written to FHIR, so it was silently dropped on export/import. Gate on the
+  // 'all' privacy setting, same as name, since it is identifying information.
+  if (privacySetting === 'all' && nodeProperties.externalID) {
+    patientResource.identifier = [{ 'value': String(nodeProperties.externalID) }];
+  }
+
   return patientResource;
 };
 

@@ -2,6 +2,11 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <!-- Editor-page CSP (defense-in-depth against stored/imported-content XSS). All app
+         scripts are same-origin files; disorder/gene/HPO datasets resolve over opdata://
+         in the desktop shell. No 'unsafe-inline' in script-src so an injected onerror/
+         <script> cannot run; connect-src is pinned so injected code cannot exfiltrate PHI. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: opdata:; font-src 'self' data: opdata:; connect-src 'self' opdata:; object-src 'none'; base-uri 'none'; frame-src 'none';">
     <title>Open Pedigree</title>
 
     <!-- PrototypeJS and scriptaculous plugin -->

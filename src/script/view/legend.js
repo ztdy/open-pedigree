@@ -248,7 +248,9 @@ var Legend = Class.create( {
      */
   _generateElement: function(id, name) {
     var color = this.getObjectColor(id);
-    var item = new Element('li', {'class' : 'disorder', 'id' : this._getPrefix() + '-' + id}).update(new Element('span', {'class' : 'disorder-name'}).update(name));
+    // Escape: disorder/gene/HPO names can be free text or come from imported files, and
+    // .update() is an innerHTML sink. Rendering them raw is a stored-XSS vector.
+    var item = new Element('li', {'class' : 'disorder', 'id' : this._getPrefix() + '-' + id}).update(new Element('span', {'class' : 'disorder-name'}).update((name + '').escapeHTML()));
     var bubble = new Element('span', {'class' : 'disorder-color'});
     bubble.style.backgroundColor = color;
     bubble.style.cursor = 'pointer';

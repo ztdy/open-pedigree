@@ -75,7 +75,7 @@ var DisorgerLegend = Class.create( Legend, {
      */
   _updateDisorderName: function(disorderID) {
     var name = this._legendBox.down('li#' + this._getPrefix() + '-' + disorderID + ' .disorder-name');
-    name.update(this.getDisorder(disorderID).getName());
+    name.update((this.getDisorder(disorderID).getName() + '').escapeHTML());  // innerHTML sink: escape to avoid stored XSS
   },
 
   /**

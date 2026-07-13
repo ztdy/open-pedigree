@@ -325,6 +325,18 @@ var NodeMenu = Class.create({
     return result;
   },
 
+  // Must be called before _attachFieldEventListeners so that on 'compositionend' the
+  // flag is cleared before the value-committing handler runs (same-event listeners
+  // fire in registration order)
+  _trackIMEComposition : function (field) {
+    field.observe('compositionstart', function() {
+      field.__imeComposing = true;
+    });
+    field.observe('compositionend', function() {
+      field.__imeComposing = false;
+    });
+  },
+
   _attachFieldEventListeners : function (field, eventNames, values) {
     var _this = this;
     eventNames.each(function(eventName) {
@@ -332,6 +344,10 @@ var NodeMenu = Class.create({
         if (_this._updating) {
           return;
         } // otherwise a field change triggers an update which triggers field change etc
+        if (field.__imeComposing) {
+          return;
+        } // IME (e.g. Chinese) composition in progress: the field value holds raw keystrokes;
+        // committing them now makes the menu rewrite the field and abort the composition
         var target = _this.targetNode;
         if (!target) {
           return;
@@ -414,8 +430,9 @@ var NodeMenu = Class.create({
       text._getValue = function() {
         return [this.value];
       }.bind(text);
+      this._trackIMEComposition(text);
       //this._attachFieldEventListeners(text, ['keypress', 'keyup'], [true]);
-      this._attachFieldEventListeners(text, ['keyup'], [true]);
+      this._attachFieldEventListeners(text, ['keyup', 'compositionend'], [true]);
       return result;
     },
     'textarea' : function (data) {
@@ -428,7 +445,8 @@ var NodeMenu = Class.create({
       text._getValue = function() {
         return [this.value];
       }.bind(text);
-      this._attachFieldEventListeners(text, ['keyup'], [true]);
+      this._trackIMEComposition(text);
+      this._attachFieldEventListeners(text, ['keyup', 'compositionend'], [true]);
       return result;
     },
     'date-picker' : function (data) {
