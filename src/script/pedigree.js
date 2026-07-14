@@ -403,6 +403,19 @@ var PedigreeEditor = Class.create({
         'function' : 'setGender'
       },
       {
+        'name' : 'assigned_sex',
+        'label' : 'Sex assigned at birth',
+        'values' : [
+          {'actual': '',     displayed: 'Not recorded'},
+          {'actual': 'AMAB', displayed: 'Assigned male (AMAB)'},
+          {'actual': 'AFAB', displayed: 'Assigned female (AFAB)'},
+          {'actual': 'UAAB', displayed: 'Unassigned (UAAB)'}
+        ],
+        'type' : 'select',
+        'tab': 'Personal',
+        'function' : 'setAssignedSexAtBirth'
+      },
+      {
         'name' : 'first_name',
         'label': 'First name',
         'type' : 'text',

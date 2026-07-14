@@ -30,6 +30,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this._stillBirthLabel = null;
     this._ageLabel = null;
     this._externalIDLabel = null;
+    this._sexLabel = null;
     this._commentsLabel = null;
     this._childlessStatusLabel = null;
     this._disorderShapes = null;
@@ -155,6 +156,34 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       this._externalIDLabel = null;
     }
     this.drawLabels();
+  },
+
+  /**
+     * Updates the sex-assigned-at-birth annotation (AMAB/AFAB/UAAB) shown below the symbol,
+     * per the NSGC 2022 nomenclature update. The abbreviation itself is standard and shown
+     * as-is (not localized). Absent when not recorded.
+     *
+     * @method updateSexLabel
+     */
+  updateSexLabel: function() {
+    this._sexLabel && this._sexLabel.remove();
+
+    var code = this.getNode().getAssignedSexAtBirth && this.getNode().getAssignedSexAtBirth();
+    if (code) {
+      this._sexLabel = editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, code).attr(PedigreeEditorParameters.attributes.label);
+    } else {
+      this._sexLabel = null;
+    }
+    this.drawLabels();
+  },
+
+  /**
+     * Returns this Person's sex-assigned-at-birth annotation label.
+     *
+     * @method getSexLabel
+     */
+  getSexLabel: function() {
+    return this._sexLabel;
   },
 
   /**
@@ -644,6 +673,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.getSBLabel() && labels.push(this.getSBLabel());
     this.getNameLabel() && labels.push(this.getNameLabel());
     this.getAgeLabel() && labels.push(this.getAgeLabel());
+    this.getSexLabel() && labels.push(this.getSexLabel());
     this.getExternalIDLabel() && labels.push(this.getExternalIDLabel());
     this.getCommentsLabel() && labels.push(this.getCommentsLabel());
     return labels;

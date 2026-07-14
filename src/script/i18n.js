@@ -18,6 +18,11 @@ var MESSAGES = {
   zh: {
     // ---- node menu: field labels ----
     'Gender': '性别',
+    'Sex assigned at birth': '出生指定性别',
+    'Not recorded': '未记录',
+    'Assigned male (AMAB)': '出生指定男性 (AMAB)',
+    'Assigned female (AFAB)': '出生指定女性 (AFAB)',
+    'Unassigned (UAAB)': '出生未指定 (UAAB)',
     'First name': '名',
     'Last name': '姓',
     'Identifier': '标识符',

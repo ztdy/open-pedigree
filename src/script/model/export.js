@@ -78,8 +78,16 @@ PedigreeExport.exportAsPED = function(pedigree, idGenerationPreference) {
       output += '0 0 ';
     }
 
+    // PED needs biological sex for genetic analysis. Per the NSGC 2022 update the symbol is
+    // gender identity, so prefer the recorded sex assigned at birth when present; only fall
+    // back to the symbol's gender when it is not.
     var sex = 3;
-    if (pedigree.GG.properties[i]['gender'] == 'M') {
+    var assignedSex = pedigree.GG.properties[i]['assignedSexAtBirth'];
+    if (assignedSex == 'AMAB') {
+      sex = 1;
+    } else if (assignedSex == 'AFAB') {
+      sex = 2;
+    } else if (pedigree.GG.properties[i]['gender'] == 'M') {
       sex = 1;
     } else if (pedigree.GG.properties[i]['gender'] == 'F') {
       sex = 2;

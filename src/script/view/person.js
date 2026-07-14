@@ -59,6 +59,9 @@ var Person = Class.create(AbstractPerson, {
     this._monozygotic = false;
     this._evaluated = false;
     this._lostContact = false;
+    // Sex assigned at birth, recorded separately from the symbol/gender (NSGC 2022 update):
+    // '' (not recorded), 'AMAB', 'AFAB', or 'UAAB'. Shown as an annotation below the symbol.
+    this._assignedSexAtBirth = '';
   },
 
   /**
@@ -226,6 +229,36 @@ var Person = Class.create(AbstractPerson, {
     }
     this._evaluated = evaluationStatus;
     this.getGraphics().updateEvaluationLabel();
+  },
+
+  /**
+     * Returns the sex assigned at birth ('' | 'AMAB' | 'AFAB' | 'UAAB').
+     *
+     * @method getAssignedSexAtBirth
+     * @return {String}
+     */
+  getAssignedSexAtBirth: function() {
+    return this._assignedSexAtBirth;
+  },
+
+  /**
+     * Sets the sex assigned at birth, recorded separately from the symbol/gender per the
+     * NSGC 2022 nomenclature update (conflating the two causes clinical harm). Valid values
+     * are '', 'AMAB', 'AFAB', 'UAAB'; anything else is ignored. Redraws the annotation.
+     *
+     * @method setAssignedSexAtBirth
+     */
+  setAssignedSexAtBirth: function(value) {
+    value = value || '';
+    if (['', 'AMAB', 'AFAB', 'UAAB'].indexOf(value) === -1 || value == this._assignedSexAtBirth) {
+      return;
+    }
+    this._assignedSexAtBirth = value;
+    // Guarded: assignProperties can run before graphics exist during construction.
+    var g = this.getGraphics && this.getGraphics();
+    if (g && typeof g.updateSexLabel === 'function') {
+      g.updateSexLabel();
+    }
   },
 
   /**
@@ -852,6 +885,7 @@ var Person = Class.create(AbstractPerson, {
       last_name:     {value : this.getLastName()},
       external_id:   {value : this.getExternalID()},
       gender:        {value : this.getGender(), inactive: inactiveGenders},
+      assigned_sex:  {value : this.getAssignedSexAtBirth()},
       date_of_birth: {value : this.getBirthDate(), inactive: this.isFetus()},
       carrier:       {value : this.getCarrierStatus(), disabled: inactiveCarriers},
       disorders:     {value : disorders},
@@ -940,6 +974,9 @@ var Person = Class.create(AbstractPerson, {
     if (this.getLostContact()) {
       info['lostContact'] = this.getLostContact();
     }
+    if (this._assignedSexAtBirth) {
+      info['assignedSexAtBirth'] = this._assignedSexAtBirth;
+    }
     return info;
   },
 
@@ -1007,6 +1044,9 @@ var Person = Class.create(AbstractPerson, {
       }
       if (info.hasOwnProperty('proband') && this.isProband() != info.proband) {
         this.setProband(info.proband);
+      }
+      if (info.hasOwnProperty('assignedSexAtBirth') && this._assignedSexAtBirth != info.assignedSexAtBirth) {
+        this.setAssignedSexAtBirth(info.assignedSexAtBirth);
       }
       return true;
     }
