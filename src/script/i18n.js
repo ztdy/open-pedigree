@@ -181,6 +181,13 @@ var MESSAGES = {
     'Error loading the graph': '加载家系图时出错',
     'Error importing pedigree: ': '导入家系图时出错：',
 
+    // ---- node menu: tab headers ----
+    'Personal': '个人信息',
+    'Clinical': '临床信息',
+
+    // ---- controller: destructive-remove confirmation ----
+    'All highlighted nodes will be removed. Do you want to proceed?': '所有高亮的节点都将被删除。是否继续？',
+
     // ---- app.js chrome ----
     '✓ Saved': '✓ 已保存',
     '✕ Save failed': '✕ 保存失败',
@@ -188,6 +195,8 @@ var MESSAGES = {
     'The pedigree library could not be opened, so editing is disabled to avoid losing data.':
       '无法打开家系图库，为避免丢失数据已禁用编辑。',
     'Retry': '重试',
+    'The language was changed for now, but could not be saved and may reset next time.':
+      '语言已临时切换，但未能保存，下次启动可能会恢复。',
 
     // ---- desktop backend alerts (renderer side) ----
     'This pedigree could not be opened (its data may be from an incompatible version or corrupted): ':
@@ -242,7 +251,18 @@ function setLocale(locale) {
   if (desktop && desktop.api && typeof desktop.api.setLocale === 'function') {
     try {
       var p = desktop.api.setLocale(locale);
-      if (p && typeof p.then === 'function') { p.then(reload, reload); return; }
+      if (p && typeof p.then === 'function') {
+        p.then(function (res) {
+          // Main tells us whether the choice reached disk. If it didn't (read-only/unavailable
+          // userData), the switch still applies this session but would revert on restart — say
+          // so instead of silently pretending it stuck.
+          if (res && res.persisted === false) {
+            try { window.alert(t('The language was changed for now, but could not be saved and may reset next time.')); } catch (e) {}
+          }
+          reload();
+        }, reload);
+        return;
+      }
     } catch (e) { /* fall through to plain reload */ }
   }
   reload();

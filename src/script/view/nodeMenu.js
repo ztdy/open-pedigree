@@ -53,7 +53,7 @@ var NodeMenu = Class.create({
         this.tabs[tabName] = new Element('div', {'id': 'tab_' + tabName, 'class': 'content ' + activeClass});
         this.form.insert(this.tabs[tabName]);
 
-        this.tabHeaders[tabName] = new Element('dd', {'class': activeClass}).insert('<a>' + tabName + '</a>');
+        this.tabHeaders[tabName] = new Element('dd', {'class': activeClass}).insert(new Element('a').update(I18n.t(tabName)));
         var _this = this;
         var switchTab = function(tabName) {
           return function() {

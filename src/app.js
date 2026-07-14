@@ -73,11 +73,26 @@ function installLanguageSwitcher() {
       (active ? 'background:#2e7d32;color:#fff;' : 'color:#333;') });
     btn.update(opt.label);
     if (!active) {
-      btn.observe('click', function() { I18n.setLocale(opt.code); });
+      btn.observe('click', function() { switchLocale(opt.code); });
     }
     box.insert(btn);
   });
   document.body.insert(box);
+}
+
+// Switch UI language. Desktop autosave is off and I18n.setLocale reloads the page, which
+// would silently drop unsaved edits (the unsaved-changes guard only covers window-close and
+// back-to-library). So in the desktop editor, if the session is dirty, save it FIRST and only
+// switch on success; if the save fails, keep editing and don't reload (the red toast already
+// reports it). A clean session — or the web build — switches immediately.
+function switchLocale(code) {
+  var desktop = null;
+  try { desktop = window.__ped_desktop; } catch (e) {}
+  if (desktop && typeof desktop.isDirty === 'function' && desktop.isDirty() && typeof desktop.saveNow === 'function') {
+    desktop.saveNow().then(function() { I18n.setLocale(code); }, function() { /* save failed: stay put */ });
+    return;
+  }
+  I18n.setLocale(code);
 }
 
 function bootstrapDesktop(bridge) {
@@ -138,8 +153,8 @@ function installSaveToast() {
     if (hideTimer) { window.clearTimeout(hideTimer); }
     hideTimer = window.setTimeout(function() { toast.removeClassName('show'); }, isError ? 4000 : 1800);
   };
-  document.observe('pedigree:save:complete', function() { show('✓ Saved', false); });
-  document.observe('pedigree:save:failed',   function() { show('✕ Save failed', true); });
+  document.observe('pedigree:save:complete', function() { show(I18n.t('✓ Saved'), false); });
+  document.observe('pedigree:save:failed',   function() { show(I18n.t('✕ Save failed'), true); });
 }
 
 function runPendingImport(bridge, documentId, imp) {
@@ -177,7 +192,11 @@ function runPendingImport(bridge, documentId, imp) {
     document.observe('pedigree:import:fail', onFail);
 
     try {
-      editor.getSaveLoadEngine().createGraphFromImportData(imp.content, imp.importType, {}, false, true);
+      // Use the SAME defaults the in-editor ImportSelector applies, so importing a file via the
+      // library matches importing it inside the editor: keep source IDs as external IDs, and treat
+      // non-standard phenotype values as new disorders rather than silently dropping them.
+      var importOptions = { markEvaluated: false, externalIdMark: true, acceptUnknownPhenotypes: true };
+      editor.getSaveLoadEngine().createGraphFromImportData(imp.content, imp.importType, importOptions, false, true);
     } catch (e) { finish(false); }
     // The above fires its outcome event synchronously; this is just a safety net.
     if (!finished) { finish(false); }
@@ -191,10 +210,10 @@ function showFatalBootstrapError(err) {
   var box = new Element('div', { 'style':
     'max-width:560px;margin:12% auto;padding:28px 32px;font-family:sans-serif;color:#333;' +
     'border:1px solid #e0b4b4;background:#fff6f6;border-radius:8px;' });
-  box.insert(new Element('h2', { 'style': 'margin:0 0 10px;color:#912d2b;' }).update('Could not start Open Pedigree'));
-  box.insert(new Element('p').update('The pedigree library could not be opened, so editing is disabled to avoid losing data.'));
+  box.insert(new Element('h2', { 'style': 'margin:0 0 10px;color:#912d2b;' }).update(I18n.t('Could not start Open Pedigree')));
+  box.insert(new Element('p').update(I18n.t('The pedigree library could not be opened, so editing is disabled to avoid losing data.')));
   box.insert(new Element('pre', { 'style': 'white-space:pre-wrap;background:#f3f3f3;padding:8px;border-radius:4px;font-size:12px;' }).update(msg.escapeHTML ? msg.escapeHTML() : msg));
-  var retry = new Element('button', { 'style': 'margin-top:12px;padding:8px 18px;cursor:pointer;' }).update('Retry');
+  var retry = new Element('button', { 'style': 'margin-top:12px;padding:8px 18px;cursor:pointer;' }).update(I18n.t('Retry'));
   retry.observe('click', function() { window.location.reload(); });
   box.insert(retry);
   document.body.insert(box);

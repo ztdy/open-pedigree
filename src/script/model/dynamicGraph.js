@@ -256,19 +256,21 @@ DynamicPositionedGraph.prototype = {
   },
 
   isChildOfProband: function( v ) {
+    var proband = this.getProbandId();
     var parents = this.DG.GG.getParents(v);
-    if (arrayContains(parents,0)) {
+    if (arrayContains(parents, proband)) {
       return true;
     }
     return false;
   },
 
   isPartnershipRelatedToProband: function( v ) {
+    var proband = this.getProbandId();
     var parents = this.DG.GG.getParents(v);
-    if (arrayContains(parents, 0)) {
+    if (arrayContains(parents, proband)) {
       return true;
     }
-    if (v == this.DG.GG.getProducingRelationship(0)) {
+    if (v == this.DG.GG.getProducingRelationship(proband)) {
       return true;
     }
     return false;

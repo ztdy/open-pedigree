@@ -116,7 +116,9 @@ const MESSAGES = {
       '便携版无法自我更新 —— 请从发布页下载新版本。',
 
     // ---- language switcher (library page) ----
-    'Language': '语言'
+    'Language': '语言',
+    'The language was changed for now, but could not be saved and may reset next time.':
+      '语言已临时切换，但未能保存，下次启动可能会恢复。'
   }
 };
 

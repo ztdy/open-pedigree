@@ -118,10 +118,15 @@
     var prev = projectFilterEl.value || ALL;
     var projects = projectsOf();
     var hasUngrouped = docs.some(function (d) { return !d.project && !d.corrupt; });
-    var opts = ['<option value="' + ALL + '">' + esc(T('All projects')) + '</option>'];
-    projects.forEach(function (p) { opts.push('<option value="' + esc(p) + '">' + esc(p) + '</option>'); });
-    if (hasUngrouped) { opts.push('<option value="' + UNGROUPED + '">' + UNGROUPED_LABEL + '</option>'); }
-    projectFilterEl.innerHTML = opts.join('');
+    // Build options via the DOM (value/textContent) rather than an innerHTML string: a
+    // project name is user/file-controlled and esc() does not escape the double quotes that
+    // would otherwise break out of value="…" and inject an attribute (the library CSP allows
+    // inline handlers). .value assignment is injection-proof.
+    var mkOpt = function (v, label) { var o = document.createElement('option'); o.value = v; o.textContent = label; return o; };
+    projectFilterEl.innerHTML = '';
+    projectFilterEl.appendChild(mkOpt(ALL, T('All projects')));
+    projects.forEach(function (p) { projectFilterEl.appendChild(mkOpt(p, p)); });
+    if (hasUngrouped) { projectFilterEl.appendChild(mkOpt(UNGROUPED, UNGROUPED_LABEL)); }
     // Restore selection if it still exists, else fall back to All.
     var stillValid = prev === ALL || prev === UNGROUPED && hasUngrouped || projects.indexOf(prev) !== -1;
     projectFilterEl.value = stillValid ? prev : ALL;
@@ -359,7 +364,16 @@
       if (l.id === I18N.locale) a.className = 'active';
       a.addEventListener('click', async function () {
         if (l.id === I18N.locale) return;
-        try { if (api && api.setLocale) await api.setLocale(l.id); } catch (e) {}
+        try {
+          if (api && api.setLocale) {
+            var res = await api.setLocale(l.id);
+            // If the shell could not persist the choice (read-only userData), it will revert on
+            // restart — tell the user rather than silently reload as if it stuck.
+            if (res && res.persisted === false) {
+              try { alert(T('The language was changed for now, but could not be saved and may reset next time.')); } catch (e) {}
+            }
+          }
+        } catch (e) {}
         try { location.reload(); } catch (e) {}
       });
       host.appendChild(a);

@@ -1,5 +1,6 @@
 import { cloneObject, Timer } from 'pedigree/model/helpers';
 import PedigreeEditorParameters from 'pedigree/pedigreeEditorParameters';
+import I18n from 'pedigree/i18n';
 
 /**
  * ...
@@ -100,7 +101,7 @@ var Controller = Class.create({
     };
 
     // ...and display a OK/Cancel dialogue, calling "removeSelected()" on OK and "unhighlightSelected" on Cancel
-    if (window.confirm('All highlighted nodes will be removed. Do you want to proceed?')) {
+    if (window.confirm(I18n.t('All highlighted nodes will be removed. Do you want to proceed?'))) {
       removeSelected();
     } else {
       unhighlightSelected();
