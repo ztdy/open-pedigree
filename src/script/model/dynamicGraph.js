@@ -288,6 +288,20 @@ DynamicPositionedGraph.prototype = {
         }
       }
     }
+    // Fallback: node 0 when it is a concrete person (the usual case). If node 0 is not a
+    // concrete person — only possible via hand-edited/imported data where node 0 is a group —
+    // pick the first concrete person, so this stays consistent with ensureSingleProband and
+    // _handleSetProband (both of which only ever mark a concrete Person) instead of pointing
+    // at a node that can never carry the proband marker.
+    if (this.isPerson(0) && !this.isPersonGroup(0)) {
+      return 0;
+    }
+    var max = this.DG.GG.getMaxRealVertexId();
+    for (var i = 0; i <= max; i++) {
+      if (this.isPerson(i) && !this.isPersonGroup(i)) {
+        return i;
+      }
+    }
     return 0;
   },
 

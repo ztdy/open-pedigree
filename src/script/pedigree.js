@@ -16,6 +16,7 @@ import ActionStack from 'pedigree/undoRedo';
 import VersionUpdater from 'pedigree/versionUpdater';
 import PedigreeEditorParameters from 'pedigree/pedigreeEditorParameters';
 import DefaultFhirTerminologyHelper from 'pedigree/DefaultFhirTerminologyHelper';
+import I18n from 'pedigree/i18n';
 
 import '../style/editor.css';
 
@@ -143,10 +144,10 @@ var PedigreeEditor = Class.create({
 
     var unsupportedBrowserButton = $('action-readonlymessage');
     unsupportedBrowserButton && unsupportedBrowserButton.on('click', function(event) {
-      alert('Your browser does not support all the features required for ' +
+      alert(I18n.t('Your browser does not support all the features required for ' +
                   'Pedigree Editor, so pedigree is displayed in read-only mode (and may have quirks).\n\n' +
                   'Supported browsers include Firefox v3.5+, Internet Explorer v9+, ' +
-                  'Chrome, Safari v4+, Opera v10.5+ and most mobile browsers.');
+                  'Chrome, Safari v4+, Opera v10.5+ and most mobile browsers.'));
     });
 
     if (enableAutosave) {
@@ -315,10 +316,10 @@ var PedigreeEditor = Class.create({
       //       => at that point all browsers which suport SVG but are treated as unsupported
       //          should theoreticaly start working (FF 3.0, Safari 3 & Opera 9/10 - need to test).
       //          IE7 does not support SVG and JSON and is completely out of the running;
-      alert('Your browser is not supported and is unable to load and display any pedigrees.\n\n' +
+      alert(I18n.t('Your browser is not supported and is unable to load and display any pedigrees.\n\n' +
                   'Suported browsers include Internet Explorer version 9 and higher, Safari version 4 and higher, '+
                   'Firefox version 3.6 and higher, Opera version 10.5 and higher, any version of Chrome and most '+
-                  'other modern browsers (including mobile). IE8 is able to display pedigrees in read-only mode.');
+                  'other modern browsers (including mobile). IE8 is able to display pedigrees in read-only mode.'));
       window.stop && window.stop();
       return true;
     }

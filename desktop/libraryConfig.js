@@ -15,6 +15,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const i18n = require('./i18n');
+const t = (k) => i18n.t(k);
 
 function portableDir() {
   const d = process.env.PORTABLE_EXECUTABLE_DIR;
@@ -76,26 +78,25 @@ async function resolveLibraryDir(deps) {
   if (!dialog || !dialog.showMessageBox) { saveDir(app, def); return { dir: def, source: 'default' }; }
 
   const detail = isPortable()
-    ? 'Portable mode. By default your data is stored next to the app, in:\n\n'
-      + def + '\n\nThat keeps everything together so it travels with the app '
-      + '(e.g. on a USB drive). You can also pick another folder.'
-    : 'By default your pedigree library is stored in:\n\n'
-      + def + '\n\nYou can also pick another folder.';
+    ? t('Portable mode. By default your data is stored next to the app, in:\n\n')
+      + def + '\n\n' + t('That keeps everything together so it travels with the app (e.g. on a USB drive). You can also pick another folder.')
+    : t('By default your pedigree library is stored in:\n\n')
+      + def + '\n\n' + t('You can also pick another folder.');
 
   const { response } = await dialog.showMessageBox({
     type: 'question',
-    buttons: ['Use default location', 'Choose folder…'],
+    buttons: [t('Use default location'), t('Choose folder…')],
     defaultId: 0,
     cancelId: 0,
-    title: 'Where should Open Pedigree store your data?',
-    message: 'Choose your data folder',
+    title: t('Where should Open Pedigree store your data?'),
+    message: t('Choose your data folder'),
     detail: detail
   });
 
   let chosen = def;
   if (response === 1) {
     const pick = await dialog.showOpenDialog({
-      title: 'Choose a folder for your Open Pedigree library',
+      title: t('Choose a folder for your Open Pedigree library'),
       properties: ['openDirectory', 'createDirectory'],
       defaultPath: def
     });

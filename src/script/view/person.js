@@ -4,6 +4,7 @@ import AbstractPerson from 'pedigree/view/abstractPerson';
 import PersonVisuals from 'pedigree/view/personVisuals';
 import HPOTerm from 'pedigree/hpoTerm';
 import Disorder from 'pedigree/disorder';
+import I18n from 'pedigree/i18n';
 
 /**
  * Person is a class representing any AbstractPerson that has sufficient information to be
@@ -560,7 +561,7 @@ var Person = Class.create(AbstractPerson, {
       editor.getDisorderLegend().addCase(disorder.getDisorderID(), disorder.getName(), this.getID());
       this.getDisorders().push(disorder.getDisorderID());
     } else {
-      alert('This person already has the specified disorder');
+      alert(I18n.t('This person already has the specified disorder'));
     }
 
     // if any "real" disorder has been added
@@ -582,7 +583,7 @@ var Person = Class.create(AbstractPerson, {
       this._disorders = this.getDisorders().without(disorderID);
     } else {
       if (disorderID != 'affected') {
-        alert('This person doesn\'t have the specified disorder');
+        alert(I18n.t('This person doesn\'t have the specified disorder'));
       }
     }
   },
@@ -642,7 +643,7 @@ var Person = Class.create(AbstractPerson, {
       editor.getHPOLegend().addCase(hpo.getID(), hpo.getName(), this.getID());
       this.getHPO().push(hpo.getID());
     } else {
-      alert('This person already has the specified phenotype');
+      alert(I18n.t('This person already has the specified phenotype'));
     }
   },
 
@@ -657,7 +658,7 @@ var Person = Class.create(AbstractPerson, {
       editor.getHPOLegend().removeCase(hpoID, this.getID());
       this._hpo = this.getHPO().without(hpoID);
     } else {
-      alert('This person doesn\'t have the specified HPO term');
+      alert(I18n.t('This person doesn\'t have the specified HPO term'));
     }
   },
 

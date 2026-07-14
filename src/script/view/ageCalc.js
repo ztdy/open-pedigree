@@ -1,3 +1,5 @@
+import I18n from 'pedigree/i18n';
+
 /**
  * Returns the age of a person with the given birth and death dates
  * @param {Date} birthDate
@@ -22,7 +24,7 @@ var getAge = function(birthDate, deathDate) {
   var age = now.getTime() - birthDate.getTime();
 
   if (age < 0) {
-    return 'not born yet';
+    return I18n.t('not born yet');
   }
 
   var years = (new Date(now.getTime() - aMonth* (birthDate.getMonth()) )).getFullYear()
@@ -43,18 +45,18 @@ var getAge = function(birthDate, deathDate) {
 
     if (days <21) {
       if (days == 1) {
-        agestr = days + ' day';
+        agestr = days + ' ' + I18n.t('day');
       } else {
-        agestr = days + ' days';
+        agestr = days + ' ' + I18n.t('days');
       }
     } else if (days < 60) {
       var weeks = Math.floor(age / aWeek);
-      agestr = weeks + ' wk';
+      agestr = weeks + ' ' + I18n.t('wk');
     } else {
-      agestr = months + ' mo';
+      agestr = months + ' ' + I18n.t('mo');
     }
   } else {
-    agestr = years + ' y';
+    agestr = years + ' ' + I18n.t('y');
   }
   return agestr;
 };

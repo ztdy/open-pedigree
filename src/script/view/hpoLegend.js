@@ -1,5 +1,6 @@
 import HPOTerm from 'pedigree/hpoTerm';
 import Legend from 'pedigree/view/legend';
+import I18n from 'pedigree/i18n';
 
 /**
  * Class responsible for keeping track of HPO terms and their properties, and for
@@ -12,7 +13,7 @@ import Legend from 'pedigree/view/legend';
 var HPOLegend = Class.create( Legend, {
 
   initialize: function($super) {
-    $super('Phenotypes');
+    $super(I18n.t('Phenotypes'));
 
     this._termCache = {};
   },

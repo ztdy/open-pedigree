@@ -11,6 +11,8 @@
  * it captured at dispatch still matches the current one (Codex M1 review, high-sev #2).
  */
 
+import I18n from 'pedigree/i18n';
+
 var DesktopSession = {
   activeDocumentId: null,
   activeTitle: null,
@@ -105,15 +107,15 @@ function createDesktopBackend(bridge) {
           }
         } catch (e) {
           try { document.fire('pedigree:load:finish'); } catch (e2) {}
-          alert('This pedigree could not be opened (its data may be from an incompatible '
-            + 'version or corrupted): ' + (e && e.message ? e.message : e));
+          alert(I18n.t('This pedigree could not be opened (its data may be from an incompatible '
+            + 'version or corrupted): ') + (e && e.message ? e.message : e));
         } finally {
           finishBootstrap();
         }
       }, function(err) {
         try { args.onFailure(); } finally {
           finishBootstrap();
-          alert('Could not load pedigree: ' + (err && err.message ? err.message : err));
+          alert(I18n.t('Could not load pedigree: ') + (err && err.message ? err.message : err));
         }
       });
     }

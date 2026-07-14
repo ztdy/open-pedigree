@@ -7,6 +7,7 @@ import ReadOnlyHoverbox from 'pedigree/view/readonlyHoverbox';
 import PedigreeEditorParameters from 'pedigree/pedigreeEditorParameters';
 import { getElementHalfHeight, sector } from 'pedigree/view/graphicHelpers';
 import getAge from 'pedigree/view/ageCalc';
+import I18n from 'pedigree/i18n';
 
 /**
  * Class for organizing graphics for Person nodes.
@@ -86,7 +87,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       } else {
         x = this.getX();
         y = this.getY() + radius/1.4;
-        var text = (this.getNode().getGender() == 'M') ? 'Male' : 'Female';
+        var text = (this.getNode().getGender() == 'M') ? I18n.t('Male') : I18n.t('Female');
         var genderLabel = editor.getPaper().text(x, y, text).attr(PedigreeEditorParameters.attributes.label);
         this._genderGraphics = editor.getPaper().set(shape, genderLabel);
       }
@@ -173,12 +174,8 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      */
   updateNameLabel: function() {
     this._nameLabel && this._nameLabel.remove();
-    var text =  '';
-    this.getNode().getFirstName() && (text = this.getNode().getFirstName());
-
-    if (this.getNode().getLastName()) {
-      text += ' ' + this.getNode().getLastName();
-    }
+    // Order given/family name for the current locale (zh: family+given, no space).
+    var text = I18n.formatName(this.getNode().getFirstName(), this.getNode().getLastName());
 
     this._nameLabel && this._nameLabel.remove();
     if(text.strip() != '') {
@@ -532,7 +529,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   updateSBLabel: function() {
     this.getSBLabel() && this.getSBLabel().remove();
     if (this.getNode().getLifeStatus() == 'stillborn') {
-      this._stillBirthLabel = editor.getPaper().text(this.getX(), this.getY(), 'SB').attr(PedigreeEditorParameters.attributes.label);
+      this._stillBirthLabel = editor.getPaper().text(this.getX(), this.getY(), I18n.t('SB')).attr(PedigreeEditorParameters.attributes.label);
     } else {
       this._stillBirthLabel = null;
     }

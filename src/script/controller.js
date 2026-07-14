@@ -37,6 +37,13 @@ var Controller = Class.create({
     var changeSet = editor.getGraph().clearAll();
     editor.getView().applyChanges(changeSet, true);
 
+    // Clearing rebuilds the graph around node 0. If the proband had been moved to a node
+    // that clearing just removed, the surviving node 0 is proband only by fallback (no
+    // `proband` marker, no arrow). Normalize so it becomes the explicit proband again —
+    // otherwise it renders with no arrow and can't be (re)set as proband (mirrors the
+    // re-normalization handleRemove already does).
+    editor.getView().ensureSingleProband();
+
     editor.getWorkspace().centerAroundGraph(false);
 
     if (!event.memo.noUndoRedo) {
@@ -546,8 +553,11 @@ Controller._handleSetProband = function(nodeID, value, noUndoRedo) {
   if (!value) {
     return; // unchecking is disabled in the UI; never leave zero probands
   }
-  if (graph.getProbandId() == nodeID) {
-    return; // already the proband
+  // Only skip if it is ALREADY the proband both logically and visually. getProbandId()
+  // falls back to node 0 when nothing is marked, so a node that is proband only by fallback
+  // (no marker / no arrow) must still be settable — otherwise it can never be marked.
+  if (graph.getProbandId() == nodeID && typeof node.getProband === 'function' && node.getProband()) {
+    return;
   }
   var nodeMap = view.getNodeMap();
   for (var otherID in nodeMap) {

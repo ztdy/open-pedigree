@@ -10,6 +10,8 @@ const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
 const crypto = require('crypto');
+const i18n = require('./i18n');
+const t = (k) => i18n.t(k);
 
 const FILE_FORMAT_VERSION = 1;
 const EXT = '.opedigree';
@@ -83,7 +85,7 @@ class DocumentStore {
     const envelope = {
       fileFormatVersion: FILE_FORMAT_VERSION,
       documentId: id,
-      title: (title && String(title).trim()) || 'Untitled pedigree',
+      title: (title && String(title).trim()) || t('Untitled pedigree'),
       project: normalizeProject(project),
       createdAt: now,
       updatedAt: now,
@@ -130,7 +132,7 @@ class DocumentStore {
       const envelope = {
         fileFormatVersion: FILE_FORMAT_VERSION,
         documentId,
-        title: (title != null ? String(title) : (base && base.title)) || 'Untitled pedigree',
+        title: (title != null ? String(title) : (base && base.title)) || t('Untitled pedigree'),
         // Preserve the existing project unless the caller explicitly passed one.
         project: project !== undefined ? normalizeProject(project) : normalizeProject(base && base.project),
         createdAt: (base && base.createdAt) || now,
@@ -160,7 +162,7 @@ class DocumentStore {
     if (isLegacyRawGraph(env)) {
       return {
         documentId,
-        title: 'Imported pedigree',
+        title: t('Imported pedigree'),
         fileFormatVersion: 0,
         createdAt: null,
         updatedAt: null,
@@ -246,7 +248,7 @@ class DocumentStore {
     const env = JSON.parse(await fsp.readFile(this._file(documentId), 'utf8'));
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    const clone = { ...env, documentId: id, title: env.title + ' (copy)', createdAt: now, updatedAt: now };
+    const clone = { ...env, documentId: id, title: env.title + t(' (copy)'), createdAt: now, updatedAt: now };
     await this._withLock(id, () => this._atomicWrite(this._file(id), JSON.stringify(clone, null, 2)));
     return this._meta(clone);
   }

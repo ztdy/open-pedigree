@@ -58,6 +58,11 @@
   .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#333; color:#fff;
     padding:9px 16px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; }
   .toast.show { opacity:.95; }
+  .lang-switch { display:inline-flex; gap:2px; align-items:center; font-size:12.5px; }
+  .lang-switch a { color: var(--muted); text-decoration:none; padding:3px 6px; border-radius:6px; cursor:pointer; }
+  .lang-switch a:hover { color: var(--ink); }
+  .lang-switch a.active { color: var(--accent-ink); background: var(--accent); font-weight:600; }
+  .lang-switch .sep { color: var(--line); }
 </style>
 </head>
 <body>
@@ -66,6 +71,7 @@
     <button class="primary" id="btn-new">+ New pedigree</button>
     <button id="btn-import">Import…</button>
     <div class="spacer"></div>
+    <span class="lang-switch" id="lang-switch"></span>
     <select id="project-filter" title="Project"></select>
     <input type="search" id="search" placeholder="Search pedigrees…" autocomplete="off">
     <select id="sort" title="Sort">
@@ -89,8 +95,16 @@
   var toastEl = document.getElementById('toast');
   var docs = [];
 
+  // i18n: the desktop shell (main process) owns the locale + dictionary; we pull both
+  // via IPC at boot and translate locally. T(key) falls back to the English source.
+  var I18N = { locale: 'en', messages: {} };
+  function T(k) {
+    var m = I18N.messages;
+    return (m && Object.prototype.hasOwnProperty.call(m, k)) ? m[k] : k;
+  }
+
   var ALL = '__all__', UNGROUPED = '__ungrouped__', NEWPROJ = '__new__';
-  var UNGROUPED_LABEL = 'Ungrouped';
+  var UNGROUPED_LABEL = 'Ungrouped'; // reassigned to T('Ungrouped') once the dictionary loads
 
   function projectsOf() {
     var set = {};
@@ -104,7 +118,7 @@
     var prev = projectFilterEl.value || ALL;
     var projects = projectsOf();
     var hasUngrouped = docs.some(function (d) { return !d.project && !d.corrupt; });
-    var opts = ['<option value="' + ALL + '">All projects</option>'];
+    var opts = ['<option value="' + ALL + '">' + esc(T('All projects')) + '</option>'];
     projects.forEach(function (p) { opts.push('<option value="' + esc(p) + '">' + esc(p) + '</option>'); });
     if (hasUngrouped) { opts.push('<option value="' + UNGROUPED + '">' + UNGROUPED_LABEL + '</option>'); }
     projectFilterEl.innerHTML = opts.join('');
@@ -119,13 +133,13 @@
   }
   function fmtDate(iso) {
     if (!iso) return '';
-    try { var d = new Date(iso); return d.toLocaleString(); } catch (e) { return iso; }
+    try { var d = new Date(iso); return d.toLocaleString(I18N.locale === 'zh' ? 'zh-CN' : undefined); } catch (e) { return iso; }
   }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
   async function refresh() {
     try { docs = await api.listDocuments(); }
-    catch (e) { content.innerHTML = '<div class="empty"><h2>Could not read the library</h2><p>' + esc(e.message || e) + '</p></div>'; return; }
+    catch (e) { content.innerHTML = '<div class="empty"><h2>' + esc(T('Could not read the library')) + '</h2><p>' + esc(e.message || e) + '</p></div>'; return; }
     populateProjectFilter();
     render();
   }
@@ -152,8 +166,8 @@
     var list = filtered();
     if (!list.length) {
       content.innerHTML = docs.length
-        ? '<div class="empty"><h2>No matches</h2></div>'
-        : '<div class="empty"><h2>No pedigrees yet</h2><p>Create your first one with “New pedigree”.</p></div>';
+        ? '<div class="empty"><h2>' + esc(T('No matches')) + '</h2></div>'
+        : '<div class="empty"><h2>' + esc(T('No pedigrees yet')) + '</h2><p>' + esc(T('Create your first one with “New pedigree”.')) + '</p></div>';
       return;
     }
     content.innerHTML = '';
@@ -189,8 +203,8 @@
 
     var title = document.createElement('div');
     title.className = 'title';
-    title.textContent = d.title || '(untitled)';
-    if (d.corrupt) { var b = document.createElement('span'); b.className = 'badge'; b.textContent = 'unreadable'; title.appendChild(document.createTextNode(' ')); title.appendChild(b); }
+    title.textContent = d.title || T('(untitled)');
+    if (d.corrupt) { var b = document.createElement('span'); b.className = 'badge'; b.textContent = T('unreadable'); title.appendChild(document.createTextNode(' ')); title.appendChild(b); }
     el.appendChild(title);
 
     if (!d.corrupt && d.clinical) {
@@ -202,9 +216,9 @@
         el.appendChild(g);
       }
       var tags = [];
-      if (c.hpoCount) tags.push(c.hpoCount + ' HPO');
-      if (c.disorderCount) tags.push(c.disorderCount + (c.disorderCount === 1 ? ' disorder' : ' disorders'));
-      if (typeof c.people === 'number' && c.people) tags.push(c.people + (c.people === 1 ? ' person' : ' people'));
+      if (c.hpoCount) tags.push(c.hpoCount + ' ' + T('HPO'));
+      if (c.disorderCount) tags.push(c.disorderCount + ' ' + T(c.disorderCount === 1 ? 'disorder' : 'disorders'));
+      if (typeof c.people === 'number' && c.people) tags.push(c.people + ' ' + T(c.people === 1 ? 'person' : 'people'));
       if (tags.length) {
         var t = document.createElement('div'); t.className = 'clinical tags';
         t.textContent = tags.join('  ·  ');
@@ -213,20 +227,20 @@
     }
 
     var meta = document.createElement('div'); meta.className = 'meta';
-    meta.textContent = d.corrupt ? 'This file could not be parsed.' : ('Updated ' + fmtDate(d.updatedAt));
+    meta.textContent = d.corrupt ? T('This file could not be parsed.') : (T('Updated ') + fmtDate(d.updatedAt));
     el.appendChild(meta);
 
     if (!d.corrupt) { el.appendChild(projectControl(d)); }
 
     var row = document.createElement('div'); row.className = 'row';
     if (!d.corrupt) {
-      row.appendChild(btn('Open', 'primary', function () { api.openInEditor(d.documentId); }));
-      row.appendChild(btn('Rename', '', function () { startRename(title, d); }));
-      row.appendChild(btn('Duplicate', '', async function () { await api.copyDocument(d.documentId); toast('Duplicated'); refresh(); }));
+      row.appendChild(btn(T('Open'), 'primary', function () { api.openInEditor(d.documentId); }));
+      row.appendChild(btn(T('Rename'), '', function () { startRename(title, d); }));
+      row.appendChild(btn(T('Duplicate'), '', async function () { await api.copyDocument(d.documentId); toast(T('Duplicated')); refresh(); }));
     }
-    row.appendChild(btn('Delete', 'del', async function () {
-      if (!confirm('Move “' + (d.title || 'this pedigree') + '” to the trash?')) return;
-      await api.trashDocument(d.documentId); toast('Moved to trash'); refresh();
+    row.appendChild(btn(T('Delete'), 'del', async function () {
+      if (!confirm(T('Move ') + '“' + (d.title || T('this pedigree')) + '”' + T(' to the trash?'))) return;
+      await api.trashDocument(d.documentId); toast(T('Moved to trash')); refresh();
     }));
     el.appendChild(row);
 
@@ -243,13 +257,13 @@
   // Per-card project picker: move a pedigree between projects (or into a brand-new one).
   function projectControl(d) {
     var wrap = document.createElement('div'); wrap.className = 'project-pick';
-    var label = document.createElement('span'); label.className = 'project-pick-label'; label.textContent = 'Project:';
+    var label = document.createElement('span'); label.className = 'project-pick-label'; label.textContent = T('Project:');
     wrap.appendChild(label);
     var sel = document.createElement('select');
     var projects = projectsOf();
     var opts = [{ v: '', t: UNGROUPED_LABEL }];
     projects.forEach(function (p) { opts.push({ v: p, t: p }); });
-    opts.push({ v: NEWPROJ, t: '＋ New project…' });
+    opts.push({ v: NEWPROJ, t: T('＋ New project…') });
     opts.forEach(function (o) {
       var op = document.createElement('option'); op.value = o.v; op.textContent = o.t;
       if (o.v === (d.project || '')) op.selected = true;
@@ -259,10 +273,10 @@
       if (sel.value === NEWPROJ) {
         // Swap the select for an inline text input to name the new project.
         var input = document.createElement('input'); input.className = 'project-new-input';
-        input.placeholder = 'New project name'; sel.replaceWith(input); input.focus();
+        input.placeholder = T('New project name'); sel.replaceWith(input); input.focus();
         var settle = async function (commit) {
           var name = (input.value || '').trim();
-          if (commit && name) { await api.setProject(d.documentId, name); toast('Moved to “' + name + '”'); }
+          if (commit && name) { await api.setProject(d.documentId, name); toast(T('Moved to ') + '“' + name + '”'); }
           refresh();
         };
         input.addEventListener('keydown', function (e) {
@@ -272,7 +286,7 @@
         return;
       }
       await api.setProject(d.documentId, sel.value);
-      toast(sel.value ? ('Moved to “' + sel.value + '”') : 'Removed from project');
+      toast(sel.value ? (T('Moved to ') + '“' + sel.value + '”') : T('Removed from project'));
       refresh();
     });
     wrap.appendChild(sel);
@@ -287,7 +301,7 @@
     async function commit(save) {
       if (done) return; done = true;
       var name = input.value.trim();
-      if (save && name && name !== d.title) { await api.renameDocument(d.documentId, name); toast('Renamed'); }
+      if (save && name && name !== d.title) { await api.renameDocument(d.documentId, name); toast(T('Renamed')); }
       refresh();
     }
     input.addEventListener('keydown', function (e) {
@@ -301,24 +315,74 @@
     // A new pedigree inherits whichever project is currently being viewed, so building a
     // project is just: filter to it (or create it on a card) then keep hitting "New".
     var proj = activeProject();
-    var opts = { title: 'Untitled pedigree' };
+    var opts = { title: T('Untitled pedigree') };
     if (proj !== ALL && proj !== UNGROUPED) { opts.project = proj; }
     try { await api.newInEditor(opts); }
-    catch (e) { toast('Could not create: ' + (e.message || e)); }
+    catch (e) { toast(T('Could not create: ') + (e.message || e)); }
   });
   document.getElementById('btn-import').addEventListener('click', async function () {
-    try { var r = await api.importAsNew(); if (r && r.error) toast('Import failed: ' + r.error); }
-    catch (e) { toast('Import failed: ' + (e.message || e)); }
+    try { var r = await api.importAsNew(); if (r && r.error) toast(T('Import failed: ') + r.error); }
+    catch (e) { toast(T('Import failed: ') + (e.message || e)); }
   });
   searchEl.addEventListener('input', render);
   sortEl.addEventListener('change', render);
   projectFilterEl.addEventListener('change', render);
 
-  if (!api) {
-    content.innerHTML = '<div class="empty"><h2>Desktop bridge unavailable</h2></div>';
-  } else {
-    refresh();
+  // Translate the static chrome (header controls, sort options, page title) once the
+  // dictionary is loaded, and set the <html lang> for correct font/hyphenation.
+  function applyStaticI18n() {
+    UNGROUPED_LABEL = T('Ungrouped');
+    document.documentElement.lang = I18N.locale;
+    document.title = T('Open Pedigree — Library');
+    document.getElementById('btn-new').textContent = T('+ New pedigree');
+    document.getElementById('btn-import').textContent = T('Import…');
+    projectFilterEl.title = T('Project');
+    searchEl.placeholder = T('Search pedigrees…');
+    sortEl.title = T('Sort');
+    sortEl.options[0].textContent = T('Recently updated');
+    sortEl.options[1].textContent = T('Title A–Z');
+    content.querySelector('.empty') && (content.querySelector('.empty').textContent = T('Loading…'));
   }
+
+  // EN / 中文 switcher. Persists the choice to the desktop shell (main-process dialogs +
+  // this page share that on-disk locale) then reloads so everything re-renders. The editor
+  // adopts the same locale on its next load.
+  function mountLangSwitch() {
+    var host = document.getElementById('lang-switch');
+    if (!host) return;
+    var langs = [{ id: 'en', label: 'EN' }, { id: 'zh', label: '中文' }];
+    host.innerHTML = '';
+    langs.forEach(function (l, i) {
+      if (i) { var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '|'; host.appendChild(sep); }
+      var a = document.createElement('a');
+      a.textContent = l.label;
+      if (l.id === I18N.locale) a.className = 'active';
+      a.addEventListener('click', async function () {
+        if (l.id === I18N.locale) return;
+        try { if (api && api.setLocale) await api.setLocale(l.id); } catch (e) {}
+        try { location.reload(); } catch (e) {}
+      });
+      host.appendChild(a);
+    });
+  }
+
+  async function boot() {
+    if (api && api.getI18n) {
+      try {
+        var r = await api.getI18n();
+        if (r) { I18N.locale = r.locale || 'en'; I18N.messages = r.messages || {}; }
+      } catch (e) { /* fall back to English */ }
+    }
+    applyStaticI18n();
+    mountLangSwitch();
+    if (!api) {
+      content.innerHTML = '<div class="empty"><h2>' + esc(T('Desktop bridge unavailable')) + '</h2></div>';
+    } else {
+      refresh();
+    }
+  }
+
+  boot();
 })();
 </script>
 </body>

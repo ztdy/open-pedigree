@@ -1,6 +1,7 @@
 import Raphael from 'pedigree/raphael';
 import Legend from 'pedigree/view/legend';
 import Person from 'pedigree/view/person';
+import I18n from 'pedigree/i18n';
 
 /**
  * Class responsible for keeping track of candidate genes.
@@ -12,7 +13,7 @@ import Person from 'pedigree/view/person';
 var GeneLegend = Class.create( Legend, {
 
   initialize: function($super) {
-    $super('Candidate Genes');
+    $super(I18n.t('Candidate Genes'));
   },
 
   _getPrefix: function(id) {

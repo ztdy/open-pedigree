@@ -38,6 +38,13 @@ const api = {
   // Fire-and-forget dirty signal to main (drives the close-confirmation dialog).
   notifyDirty: (dirty) => ipcRenderer.send('doc:dirty', !!dirty),
 
+  // UI locale sync. The editor (renderer) persists locale to the desktop shell via
+  // setLocale so main-process dialogs + library.html agree. getI18n returns
+  // { locale, messages } for pages (library.html) to translate locally.
+  getLocale: () => ipcRenderer.invoke('app:get-locale'),
+  setLocale: (locale) => ipcRenderer.invoke('app:set-locale', String(locale)),
+  getI18n: () => ipcRenderer.invoke('app:get-i18n'),
+
   // Register a handler main calls when the user picks "Save" on the close dialog.
   // The handler must return a Promise; we relay success/failure back to main, echoing
   // the requestId so main can correlate the ack (Codex M1 review #1/#10/#11). Only this

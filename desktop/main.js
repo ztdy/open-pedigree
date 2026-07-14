@@ -7,6 +7,9 @@ const { DocumentStore } = require('./documentStore');
 const { detectImportType } = require('./importDetect');
 const { resolveLibraryDir } = require('./libraryConfig');
 const offlineData = require('./offlineData');
+const { initAutoUpdate } = require('./updater');
+const i18n = require('./i18n');
+const t = (k) => i18n.t(k);
 
 const MAX_IMPORT_BYTES = 8 * 1024 * 1024; // reject absurdly large import files
 
@@ -170,11 +173,11 @@ function createWindow() {
 async function confirmUnsavedThen(win, onProceed) {
   const { response } = await dialog.showMessageBox(win, {
     type: 'warning',
-    buttons: ['Save', "Don't Save", 'Cancel'],
+    buttons: [t('Save'), t("Don't Save"), t('Cancel')],
     defaultId: 0,
     cancelId: 2,
-    message: 'This pedigree has unsaved changes.',
-    detail: 'Do you want to save first?'
+    message: t('This pedigree has unsaved changes.'),
+    detail: t('Do you want to save first?')
   });
   if (response === 2) return false; // Cancel
   if (response === 0) { // Save
@@ -189,21 +192,21 @@ async function confirmUnsavedThen(win, onProceed) {
       if (!clean) {
         const { response: r3 } = await dialog.showMessageBox(win, {
           type: 'warning',
-          buttons: ['Proceed anyway', 'Cancel'],
+          buttons: [t('Proceed anyway'), t('Cancel')],
           defaultId: 1,
           cancelId: 1,
-          message: 'Still has unsaved changes.',
-          detail: 'Edits kept arriving while saving. Proceed and discard the latest, or cancel?'
+          message: t('Still has unsaved changes.'),
+          detail: t('Edits kept arriving while saving. Proceed and discard the latest, or cancel?')
         });
         if (r3 === 1) return false; // Cancel
       }
     } catch (e) {
       const { response: r2 } = await dialog.showMessageBox(win, {
         type: 'error',
-        buttons: ['Proceed anyway', 'Cancel'],
+        buttons: [t('Proceed anyway'), t('Cancel')],
         defaultId: 1,
         cancelId: 1,
-        message: 'Saving failed.',
+        message: t('Saving failed.'),
         detail: String(e && e.message || e)
       });
       if (r2 === 1) return false; // Cancel
@@ -281,6 +284,9 @@ function senderIsTrusted(event) {
 const LIBRARY_CHANNELS = new Set(['doc:list', 'doc:create', 'doc:rename', 'doc:copy', 'doc:trash',
   'doc:set-project', 'app:open-in-editor', 'app:new-in-editor', 'app:import-as-new']);
 const EDITOR_CHANNELS = new Set(['app:bootstrap', 'doc:open', 'doc:save', 'app:back-to-library', 'app:import-done']);
+// Locale channels are read/written by both pages (the editor persists the user's choice;
+// the library reads it to translate itself), so they're allowed from any trusted view.
+const UTIL_CHANNELS = new Set(['app:get-locale', 'app:set-locale', 'app:get-i18n']);
 
 function viewFor(event) {
   const url = event.sender.getURL();
@@ -296,7 +302,8 @@ function registerIpc() {
     const view = viewFor(event);
     const allowed = (view === 'library' && LIBRARY_CHANNELS.has(channel))
       || (view === 'editor' && EDITOR_CHANNELS.has(channel))
-      || (view === 'loading' && channel === 'app:bootstrap'); // bootstrap fires during initial load
+      || (view === 'loading' && (channel === 'app:bootstrap' || UTIL_CHANNELS.has(channel))) // fire during initial load
+      || UTIL_CHANNELS.has(channel); // locale sync from either page
     if (!allowed) throw new Error('ipc: channel ' + channel + ' not allowed from ' + view + ' view');
     return fn(...args);
   });
@@ -321,7 +328,7 @@ function registerIpc() {
     // Bare launch / reload with no target: most-recent or a fresh doc, no import.
     const docs = await store.list();
     const usable = docs.find((d) => !d.corrupt);
-    const meta = usable || (await store.create({ title: 'Untitled pedigree' }));
+    const meta = usable || (await store.create({ title: t('Untitled pedigree') }));
     pendingOpen = { documentId: meta.documentId, import: null };
     return Object.assign({}, meta, { pendingImport: null });
   });
@@ -341,32 +348,32 @@ function registerIpc() {
   handle('app:import-as-new', async () => {
     const win = mainWindow;
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Import pedigree as a new document',
+      title: t('Import pedigree as a new document'),
       properties: ['openFile'],
       filters: [
-        { name: 'Pedigree files', extensions: ['ped', 'txt', 'linkage', 'ged', 'gedcom', 'boadicea', 'bd', 'json', 'fhir'] },
-        { name: 'All files', extensions: ['*'] }
+        { name: t('Pedigree files'), extensions: ['ped', 'txt', 'linkage', 'ged', 'gedcom', 'boadicea', 'bd', 'json', 'fhir'] },
+        { name: t('All files'), extensions: ['*'] }
       ]
     });
     if (canceled || !filePaths || !filePaths.length) return { canceled: true };
     const file = filePaths[0];
     const stat = await fsp.stat(file);
     if (stat.size > MAX_IMPORT_BYTES) {
-      await dialog.showMessageBox(win, { type: 'error', message: 'File too large',
-        detail: 'This file is ' + Math.round(stat.size / 1048576) + ' MB; the limit is 8 MB.' });
+      await dialog.showMessageBox(win, { type: 'error', message: t('File too large'),
+        detail: t('This file is ') + Math.round(stat.size / 1048576) + t(' MB; the limit is 8 MB.') });
       return { canceled: true, error: 'too large' };
     }
     let content;
     try {
       content = decodeTextFile(await fsp.readFile(file));
     } catch (e) {
-      await dialog.showMessageBox(win, { type: 'error', message: 'Could not read file',
+      await dialog.showMessageBox(win, { type: 'error', message: t('Could not read file'),
         detail: String(e && e.message || e) });
       return { canceled: true, error: 'decode' };
     }
     const importType = detectImportType(file, content);
     const base = path.basename(file).replace(/\.[^.]+$/, '');
-    const meta = await store.create({ title: base || 'Imported pedigree' });
+    const meta = await store.create({ title: base || t('Imported pedigree') });
     if (win) await showEditor(win, meta.documentId, { importType: importType, content: content });
     return { ok: true, meta: meta, importType: importType };
   });
@@ -390,6 +397,13 @@ function registerIpc() {
     else if (win) await showLibrary(win);
     return { ok: true };
   });
+
+  // --- UI locale sync --- persisted to a single on-disk file (desktop/i18n.js) so main
+  // dialogs, the library page and the editor all agree. The editor writes it on switch;
+  // the library reads {locale, messages} to translate itself locally.
+  handle('app:get-locale', () => i18n.getLocale());
+  handle('app:set-locale', (locale) => { var persisted = i18n.setLocale(locale); return { ok: persisted, persisted: persisted, locale: i18n.getLocale() }; });
+  handle('app:get-i18n', () => ({ locale: i18n.getLocale(), messages: i18n.messages() }));
 
   // One-way dirty updates from renderer -> main (drives close confirmation).
   ipcMain.on('doc:dirty', (e, dirty) => {
@@ -436,6 +450,7 @@ if (require.main === module) {
     });
 
     app.whenReady().then(async () => {
+      i18n.init(app); // locale for all main-process dialogs + library.html
       // Resolve where the library lives (first-run picker / saved choice / portable default)
       // BEFORE constructing the store, which creates the directory.
       let resolvedDir = null;
@@ -457,9 +472,9 @@ if (require.main === module) {
           if (resolvedDir && dir !== resolvedDir) {
             dialog.showMessageBox({
               type: 'warning',
-              message: 'Could not use your saved data folder',
-              detail: 'This location was unavailable (removed drive or no write access):\n\n'
-                + resolvedDir + '\n\nUsing the default folder instead:\n\n' + dir
+              message: t('Could not use your saved data folder'),
+              detail: t('This location was unavailable (removed drive or no write access):\n\n')
+                + resolvedDir + t('\n\nUsing the default folder instead:\n\n') + dir
             }).catch(() => {});
           }
           break;
@@ -468,15 +483,20 @@ if (require.main === module) {
         }
       }
       if (!store) {
-        dialog.showErrorBox('Open Pedigree',
-          'Could not create or write to any data folder, so the app cannot start.\n\n'
-          + 'Check folder permissions or set OPEN_PEDIGREE_LIBRARY to a writable path.');
+        dialog.showErrorBox(t('Open Pedigree'),
+          t('Could not create or write to any data folder, so the app cannot start.\n\nCheck folder permissions or set OPEN_PEDIGREE_LIBRARY to a writable path.'));
         app.quit();
         return;
       }
       registerOfflineDataProtocol();
       registerIpc();
       createWindow();
+      // Check for updates a few seconds after launch so it never delays the first paint.
+      // No-op in dev / when unpackaged; silent on "no update" and network errors.
+      setTimeout(() => {
+        try { initAutoUpdate(() => BrowserWindow.getAllWindows()[0] || null); }
+        catch (e) { /* auto-update must never break startup */ }
+      }, 4000);
     });
 
     app.on('activate', () => {

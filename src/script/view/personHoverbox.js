@@ -1,6 +1,7 @@
 import { Timer } from 'pedigree/model/helpers';
 import AbstractHoverbox from 'pedigree/view/abstractHoverbox';
 import PedigreeEditorParameters from 'pedigree/pedigreeEditorParameters';
+import I18n from 'pedigree/i18n';
 
 /**
  * PersonHoverbox is a class for all the UI elements and graphics surrounding a Person node and
@@ -61,12 +62,12 @@ var PersonHoverbox = Class.create(AbstractHoverbox, {
 
     // sibling handle
     this.generateHandle('sibling', x-PedigreeEditorParameters.attributes.personSiblingHandleLengthX+strokeWidth/3, splitLocationY, x-PedigreeEditorParameters.attributes.personSiblingHandleLengthX+strokeWidth/2, splitLocationY+PedigreeEditorParameters.attributes.personSiblingHandleLengthY,
-      'Click to create a sibling or drag to an existing parentless person (valid choices will be highlighted in green)');
+      I18n.t('Click to create a sibling or drag to an existing parentless person (valid choices will be highlighted in green)'));
 
     if (editor.getGraph().getParentRelationship(node.getID()) === null) {
       // parent handle
       this.generateHandle('parent', x, splitLocationY, x, y - PedigreeEditorParameters.attributes.personHandleLength,
-        'Click to create new nodes for the parents or drag to an existing person or partnership (valid choices will be highlighted in green). Dragging to a person will create a new relationship.');
+        I18n.t('Click to create new nodes for the parents or drag to an existing person or partnership (valid choices will be highlighted in green). Dragging to a person will create a new relationship.'));
     }
 
     if (!node.isFetus()) {
@@ -77,7 +78,7 @@ var PersonHoverbox = Class.create(AbstractHoverbox, {
         var path = [['M', x, y],['L', x, y+PedigreeEditorParameters.attributes.personHandleBreakX]];
         editor.getPaper().path(path).attr({'stroke-width': strokeWidth, stroke: 'gray'}).insertBefore(nodeShapes);
         this.generateHandle('child', x, y+PedigreeEditorParameters.attributes.personHandleBreakX-2, x, y+PedigreeEditorParameters.attributes.personHandleLength,
-          'Click to create a new child node or drag to an existing parentless person (valid choices will be highlighted in green)');
+          I18n.t('Click to create a new child node or drag to an existing parentless person (valid choices will be highlighted in green)'));
       }
 
       // partner handle
@@ -86,7 +87,7 @@ var PersonHoverbox = Class.create(AbstractHoverbox, {
       var path = [['M', x, vertPosForPartnerHandles],['L', x + PedigreeEditorParameters.attributes.personHandleBreakX, vertPosForPartnerHandles]];
       editor.getPaper().path(path).attr({'stroke-width': strokeWidth, stroke: 'gray'}).insertBefore(nodeShapes);
       this.generateHandle('partnerR', x + PedigreeEditorParameters.attributes.personHandleBreakX - 2, vertPosForPartnerHandles, x + PedigreeEditorParameters.attributes.personHandleLength, vertPosForPartnerHandles,
-        'Click to create a new partner node or drag to an existing node (valid choices will be highlighted in green)');
+        I18n.t('Click to create a new partner node or drag to an existing node (valid choices will be highlighted in green)'));
     }
 
     this._currentHandles.push( editor.getPaper().setFinish() );

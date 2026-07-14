@@ -1,4 +1,5 @@
 import Helpers from 'pedigree/model/helpers';
+import I18n from 'pedigree/i18n';
 
 /**
  * Base class for various "legend" widgets
@@ -234,7 +235,7 @@ var Legend = Class.create( {
     var label = this._legendBox.down('li#' + this._getPrefix() + '-' + id + ' .disorder-cases');
     if (label) {
       var cases = this._affectedNodes.hasOwnProperty(id) ? this._affectedNodes[id].length : 0;
-      label.update(cases + '&nbsp;case' + ((cases - 1) && 's' || ''));
+      label.update(cases + '&nbsp;' + (cases === 1 ? I18n.t('case') : I18n.t('cases')));
     }
   },
 
@@ -254,7 +255,7 @@ var Legend = Class.create( {
     var bubble = new Element('span', {'class' : 'disorder-color'});
     bubble.style.backgroundColor = color;
     bubble.style.cursor = 'pointer';
-    bubble.title = 'Click to change color';
+    bubble.title = I18n.t('Click to change color');
     var me = this;
     // Click the swatch to recolor this disorder/gene/phenotype via a native color picker.
     Element.observe(bubble, 'click', function(event) {

@@ -3,6 +3,7 @@ import HPOTerm from 'pedigree/hpoTerm';
 import Helpers from 'pedigree/model/helpers';
 import GraphicHelpers from 'pedigree/view/graphicHelpers';
 import AgeCalc from 'pedigree/view/ageCalc';
+import I18n from 'pedigree/i18n';
 
 /**
  * NodeMenu is a UI Element containing options for AbstractNode elements
@@ -311,7 +312,8 @@ var NodeMenu = Class.create({
 
   _generateEmptyField : function (data) {
     var result = new Element('div', {'class' : 'field-box field-' + data.name});
-    var label = new Element('label', {'class' : 'field-name'}).update(data.label);
+    // Translate the field label for the current locale (falls back to the English source).
+    var label = new Element('label', {'class' : 'field-name'}).update(data.label ? I18n.t(data.label) : data.label);
     result.inputsContainer = new Element('div', {'class' : 'field-inputs'});
     result.insert(label).insert(result.inputsContainer);
     this.fieldMap[data.name] = {
@@ -396,7 +398,7 @@ var NodeMenu = Class.create({
       result.inputsContainer.insert(values);
       var _this = this;
       var _generateRadioButton = function(v) {
-        var radioLabel = new Element('label', {'class' : data.name + '_' + v.actual}).update(v.displayed);
+        var radioLabel = new Element('label', {'class' : data.name + '_' + v.actual}).update(I18n.t(v.displayed));
         var radioButton = new Element('input', {type: 'radio', name: data.name, value: v.actual});
         radioLabel.insert({'top': radioButton});
         radioButton._getValue = function() {
@@ -540,7 +542,7 @@ var NodeMenu = Class.create({
       result.inputsContainer.insert(select);
       select.wrap('span');
       var _generateSelectOption = function(v) {
-        var option = new Element('option', {'value' : v.actual}).update(v.displayed);
+        var option = new Element('option', {'value' : v.actual}).update(I18n.t(v.displayed));
         select.insert(option);
       };
       if(data.nullValue) {
@@ -550,7 +552,7 @@ var NodeMenu = Class.create({
         data.values.each(_generateSelectOption);
       } else if (data.range) {
         $A($R(data.range.start, data.range.end)).each(function(i) {
-          _generateSelectOption({'actual': i, 'displayed' : i + ' ' + data.range.item[+(i!=1)]});
+          _generateSelectOption({'actual': i, 'displayed' : i + ' ' + I18n.t(data.range.item[+(i!=1)])});
         });
       }
       select._getValue = function() {

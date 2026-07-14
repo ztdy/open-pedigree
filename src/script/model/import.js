@@ -2,6 +2,7 @@ import { isInt } from 'pedigree/model/helpers';
 import BaseGraph from 'pedigree/model/baseGraph';
 import GA4GHFHIRConverter from 'pedigree/GA4GHFHIRConverter';
 import RelationshipTracker from 'pedigree/model/relationshipTracker';
+import I18n from 'pedigree/i18n';
 
 var PedigreeImport = function () {
 };
@@ -751,8 +752,8 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
   if (gedcom.header.hasOwnProperty('GEDC')) {
     if (gedcom.header.GEDC.hasOwnProperty('VERS')) {
       if (gedcom.header.GEDC.VERS != '5.5' && gedcom.header.GEDC.VERS != '5.5.1') {
-        alert('Unsupported GEDCOM version detected: [' + gedcom.header.GEDC.VERS + ']. '+
-                     'Import will continue but the correctness is not guaranteed. Supportede versions are 5.5 and 5.5.1');
+        alert(I18n.t('Unsupported GEDCOM version detected: [') + gedcom.header.GEDC.VERS + I18n.t(']. ')+
+                     I18n.t('Import will continue but the correctness is not guaranteed. Supportede versions are 5.5 and 5.5.1'));
       }
     }
   }
@@ -982,7 +983,7 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
 
   if (noChildFamilies.length > 0) {
     // JSON.stringify(noChildFamilies)
-    alert('Some families with no children were found in the imported pedigree: this is not supported at the moment, so a child was added to each childless family');
+    alert(I18n.t('Some families with no children were found in the imported pedigree: this is not supported at the moment, so a child was added to each childless family'));
   }
 
   PedigreeImport.validateBaseGraph(newG);

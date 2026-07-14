@@ -1,5 +1,6 @@
 import PedigreeEditor from './script/pedigree';
 import PedigreeExport from './script/model/export';
+import I18n from './script/i18n';
 import { DesktopSession, createDesktopBackend, attachDirtyTracking } from './script/desktop/desktopBackend';
 
 import '@fortawesome/fontawesome-free/js/fontawesome'
@@ -17,11 +18,67 @@ var editor;
 document.observe('dom:loaded',function() {
   var bridge = window.openPedigreeDesktop;
   if (bridge && bridge.isDesktop && bridge.api) {
-    bootstrapDesktop(bridge);
+    // The desktop shell (main + library page) owns the authoritative locale on disk; adopt
+    // it before mounting so a switch made on the library page shows up here too. If it
+    // differs from what this page last used, reconcile and reload once, then boot.
+    syncDesktopLocaleThen(bridge, function() { bootstrapDesktop(bridge); });
   } else {
     editor = new PedigreeEditor();
+    installLanguageSwitcher();
   }
 });
+
+// Reconcile the editor's locale with the desktop shell's on-disk choice. Reloads once if
+// they differ (so all labels render in the shared locale), otherwise proceeds immediately.
+function syncDesktopLocaleThen(bridge, proceed) {
+  var api = bridge && bridge.api;
+  if (!api || typeof api.getLocale !== 'function') { proceed(); return; }
+  var settled = false;
+  var go = function() { if (!settled) { settled = true; proceed(); } };
+  try {
+    var p = api.getLocale();
+    if (!p || typeof p.then !== 'function') { go(); return; }
+    p.then(function(loc) {
+      if (!loc || loc === I18n.getLocale() || I18n.SUPPORTED.indexOf(loc) === -1) { go(); return; }
+      // Reconcile to the shell's locale by reloading once. Guard only against a *loop on the
+      // same target*: if we already tried to adopt this exact locale and it didn't stick
+      // (e.g. localStorage can't persist), proceed without reloading again. A different
+      // target later (e.g. switched on the library page) still reconciles normally.
+      var lastTried = null;
+      try { lastTried = window.sessionStorage.getItem('op_locale_sync_attempt'); } catch (e) {}
+      if (lastTried === loc) { go(); return; }
+      I18n.setLocaleNoReload(loc);
+      try { window.sessionStorage.setItem('op_locale_sync_attempt', loc); } catch (e) {}
+      if (!settled) { settled = true; try { window.location.reload(); } catch (e) { proceed(); } }
+    }, go);
+  } catch (e) { go(); }
+}
+
+// A small language switcher pinned to the top-right corner. Switching locale persists the
+// choice and reloads (see i18n.setLocale) so every label + the node menu re-render. Added
+// after the editor mounts because Workspace does $('body').update(...), which would wipe
+// anything inserted earlier. No inline handlers (the CSP forbids inline scripts).
+function installLanguageSwitcher() {
+  if (document.getElementById('op-lang-switch')) { return; }
+  var box = new Element('div', { 'id': 'op-lang-switch', 'style':
+    'position:fixed;top:8px;right:10px;z-index:100001;font-family:sans-serif;font-size:12px;' +
+    'background:rgba(255,255,255,.9);border:1px solid #ccc;border-radius:14px;padding:2px;' +
+    'box-shadow:0 1px 4px rgba(0,0,0,.15);user-select:none;' });
+  var current = I18n.getLocale();
+  var options = [ { code: 'en', label: 'EN' }, { code: 'zh', label: '中文' } ];
+  options.each(function(opt) {
+    var active = (opt.code === current);
+    var btn = new Element('span', { 'style':
+      'display:inline-block;padding:3px 10px;border-radius:12px;cursor:pointer;' +
+      (active ? 'background:#2e7d32;color:#fff;' : 'color:#333;') });
+    btn.update(opt.label);
+    if (!active) {
+      btn.observe('click', function() { I18n.setLocale(opt.code); });
+    }
+    box.insert(btn);
+  });
+  document.body.insert(box);
+}
 
 function bootstrapDesktop(bridge) {
   var db = createDesktopBackend(bridge);
@@ -37,6 +94,7 @@ function bootstrapDesktop(bridge) {
     });
     attachDirtyTracking(bridge);
     installSaveToast();
+    installLanguageSwitcher();
     bridge.api.onSaveAndClose(function() {
       return db.saveNow().then(function() {
         // Report whether an edit landed during the save so main can decide to proceed.

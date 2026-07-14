@@ -1,4 +1,5 @@
 import TemplateSelector from 'pedigree/view/templateSelector';
+import I18n from 'pedigree/i18n';
 
 /**
  * SaveLoadEngine is responsible for automatic and manual save and load operations.
@@ -27,7 +28,7 @@ function getSelectorFromXML(responseXML, selectorName, attributeName, attributeV
       return responseXML.selectSingleNode(query);
     } catch (e) {
       // Firefox v3.0-
-      alert('your browser is unsupported');
+      alert(I18n.t('your browser is unsupported'));
       window.stop && window.stop();
       throw 'Unsupported browser';
     }
@@ -202,7 +203,7 @@ var SaveLoadEngine = Class.create( {
       var changeSet = editor.getGraph().fromJSON(JSONString);
     } catch(err) {
       console.log('ERROR loading the graph: ', err);
-      alert('Error loading the graph');
+      alert(I18n.t('Error loading the graph'));
       document.fire('pedigree:graph:clear');
       document.fire('pedigree:load:finish');
       return;
@@ -236,7 +237,7 @@ var SaveLoadEngine = Class.create( {
         throw 'unable to create a pedigree from imported data';
       }
     } catch(err) {
-      alert('Error importing pedigree: ' + err);
+      alert(I18n.t('Error importing pedigree: ') + err);
       document.fire('pedigree:import:fail');
       return;
     }

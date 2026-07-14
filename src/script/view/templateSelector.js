@@ -1,4 +1,5 @@
 import PedigreeTemplates from 'pedigree/view/templates';
+import I18n from 'pedigree/i18n';
 
 /**
  * The UI Element for browsing and selecting pre-defined Pedigree templates
@@ -13,16 +14,16 @@ var TemplateSelector = Class.create( {
   initialize: function(isStartupTemplateSelector) {
     this._isStartupTemplateSelector = isStartupTemplateSelector;
     this.mainDiv = new Element('div', {'class': 'template-picture-container'});
-    this.mainDiv.update('Loading list of templates...');
+    this.mainDiv.update(I18n.t('Loading list of templates...'));
     var closeShortcut = isStartupTemplateSelector ? [] : ['Esc'];
-    this.dialog = new PhenoTips.widgets.ModalPopup(this.mainDiv, {close: {method : this.hide.bind(this), keys : closeShortcut}}, {extraClassName: 'pedigree-template-chooser', title: 'Please select a pedigree template', displayCloseButton: !isStartupTemplateSelector, verticalPosition: 'top'});
+    this.dialog = new PhenoTips.widgets.ModalPopup(this.mainDiv, {close: {method : this.hide.bind(this), keys : closeShortcut}}, {extraClassName: 'pedigree-template-chooser', title: I18n.t('Please select a pedigree template'), displayCloseButton: !isStartupTemplateSelector, verticalPosition: 'top'});
     isStartupTemplateSelector && this.dialog.show();
 
     this.mainDiv.update();
 
     for (var i = 0; i < PedigreeTemplates.length; ++i) {
       var pictureBox = new Element('div', {'class': 'picture-box'});
-      pictureBox.update('Loading...');
+      pictureBox.update(I18n.t('Loading...'));
       this.mainDiv.insert(pictureBox);
       var template = PedigreeTemplates[i];
       pictureBox.innerHTML = template.image;

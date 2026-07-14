@@ -1,7 +1,7 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
@@ -25,6 +25,12 @@
     "productName": "Open Pedigree",
     "copyright": "Open Pedigree — LGPL-2.1. Source: https://github.com/phenotips/open-pedigree",
     "electronVersion": "41.10.1",
+    "publish": {
+      "provider": "github",
+      "owner": "ztdy",
+      "repo": "open-pedigree",
+      "releaseType": "release"
+    },
     "asar": true,
     "electronFuses": {
       "runAsNode": false,
@@ -44,6 +50,8 @@
       "importDetect.js",
       "libraryConfig.js",
       "offlineData.js",
+      "updater.js",
+      "i18n.js",
       "library.html",
       "data/**/*",
       "fonts/**/*",
@@ -57,8 +65,18 @@
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico",
       "artifactName": "OpenPedigree-${version}-${arch}.${ext}"
@@ -80,5 +98,8 @@
     "portable": {
       "artifactName": "OpenPedigree-Portable-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

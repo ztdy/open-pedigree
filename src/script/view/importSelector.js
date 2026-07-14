@@ -1,3 +1,5 @@
+import I18n from 'pedigree/i18n';
+
 /**
  * The UI Element for importing pedigrees from text representationin various formats
  *
@@ -15,7 +17,7 @@ var ImportSelector = Class.create( {
 
     var mainDiv = new Element('div', {'class': 'import-selector'});
 
-    var promptImport = new Element('div', {'class': 'import-section'}).update('Import data:');
+    var promptImport = new Element('div', {'class': 'import-section'}).update(I18n.t('Import data:'));
     this.importValue = new Element('textarea', {'id': 'import', 'value': '', 'class': 'import-textarea'});
     mainDiv.insert(promptImport).insert(this.importValue);
 
@@ -31,7 +33,7 @@ var ImportSelector = Class.create( {
           // some older browsers do not allow setting value of a file input element and may generate a security error
         }
       });
-      var uploadLink = new Element('div', {'class': 'import-upload'}).update('(<a>Select a local file to be imported</a>)');
+      var uploadLink = new Element('div', {'class': 'import-upload'}).update('(<a>' + I18n.t('Select a local file to be imported') + '</a>)');
       uploadLink.observe('click', function(event) {
         var fileElem = document.getElementById('pedigreeInputFile');
         fileElem.click();
@@ -57,7 +59,7 @@ var ImportSelector = Class.create( {
     typeListElement.insert(_addTypeOption(false, 'BOADICEA', 'BOADICEA'));
     typeListElement.insert(_addTypeOption(false, 'GA4GH FHIR(JSON)', 'GA4GH'));
 
-    var promptType = new Element('div', {'class': 'import-section'}).update('Data format:');
+    var promptType = new Element('div', {'class': 'import-section'}).update(I18n.t('Data format:'));
     var dataSection2 = new Element('div', {'class': 'import-block'});
     dataSection2.insert(promptType).insert(typeListElement);
     mainDiv.insert(dataSection2);
@@ -73,18 +75,18 @@ var ImportSelector = Class.create( {
       return optionWrapper;
     };
     var configListElement = new Element('table', {id : 'import-type'});
-    configListElement.insert(_addConfigOption(true,  'Treat non-standard phenotype values as new disorders', 'accept'));
-    configListElement.insert(_addConfigOption(false, 'Treat non-standard phenotype values as "no information"', 'dontaccept'));
+    configListElement.insert(_addConfigOption(true,  I18n.t('Treat non-standard phenotype values as new disorders'), 'accept'));
+    configListElement.insert(_addConfigOption(false, I18n.t('Treat non-standard phenotype values as "no information"'), 'dontaccept'));
 
     var markEvaluated = new Element('input', {'type' : 'checkbox', 'value': '1', 'name': 'mark-evaluated'});
-    var markLabel1     = new Element('label', {'class': 'import-mark-label1'}).insert(markEvaluated).insert('Mark all patients with known disorder status with \'documented evaluation\' mark').wrap('td').wrap('tr');
+    var markLabel1     = new Element('label', {'class': 'import-mark-label1'}).insert(markEvaluated).insert(I18n.t('Mark all patients with known disorder status with \'documented evaluation\' mark')).wrap('td').wrap('tr');
     configListElement.insert(markLabel1);
     var markExternal = new Element('input', {'type' : 'checkbox', 'value': '1', 'name': 'mark-external'});
     markExternal.checked = true;
-    var markLabel2   = new Element('label', {'class': 'import-mark-label2'}).insert(markExternal).insert('Save individual IDs as given in the input data as \'external ID\'').wrap('td').wrap('tr');
+    var markLabel2   = new Element('label', {'class': 'import-mark-label2'}).insert(markExternal).insert(I18n.t('Save individual IDs as given in the input data as \'external ID\'')).wrap('td').wrap('tr');
     configListElement.insert(markLabel2);
 
-    var promptConfig = new Element('div', {'class': 'import-section'}).update('Options:');
+    var promptConfig = new Element('div', {'class': 'import-section'}).update(I18n.t('Options:'));
     var dataSection3 = new Element('div', {'class': 'import-block'});
     dataSection3.insert(promptConfig).insert(configListElement);
     mainDiv.insert(dataSection3);
@@ -92,8 +94,8 @@ var ImportSelector = Class.create( {
     //TODO: [x] auto-combine multiple unaffected children when the number of children is greater than [5]
 
     var buttons = new Element('div', {'class' : 'buttons import-block-bottom'});
-    buttons.insert(new Element('input', {type: 'button', name : 'import', 'value': 'Import', 'class' : 'button', 'id': 'import_button'}).wrap('span', {'class' : 'buttonwrapper'}));
-    buttons.insert(new Element('input', {type: 'button', name : 'cancel', 'value': 'Cancel', 'class' : 'button secondary'}).wrap('span', {'class' : 'buttonwrapper'}));
+    buttons.insert(new Element('input', {type: 'button', name : 'import', 'value': I18n.t('Import'), 'class' : 'button', 'id': 'import_button'}).wrap('span', {'class' : 'buttonwrapper'}));
+    buttons.insert(new Element('input', {type: 'button', name : 'cancel', 'value': I18n.t('Cancel'), 'class' : 'button secondary'}).wrap('span', {'class' : 'buttonwrapper'}));
     mainDiv.insert(buttons);
 
     var cancelButton = buttons.down('input[name="cancel"]');
@@ -106,7 +108,7 @@ var ImportSelector = Class.create( {
     });
 
     var closeShortcut = ['Esc'];
-    this.dialog = new PhenoTips.widgets.ModalPopup(mainDiv, {close: {method : this.hide.bind(this), keys : closeShortcut}}, {extraClassName: 'pedigree-import-chooser', title: 'Pedigree import', displayCloseButton: true});
+    this.dialog = new PhenoTips.widgets.ModalPopup(mainDiv, {close: {method : this.hide.bind(this), keys : closeShortcut}}, {extraClassName: 'pedigree-import-chooser', title: I18n.t('Pedigree import'), displayCloseButton: true});
   },
 
   /*
@@ -165,7 +167,7 @@ var ImportSelector = Class.create( {
     this.hide();
 
     if (!importValue || importValue == '') {
-      alert('Nothing to import!');
+      alert(I18n.t('Nothing to import!'));
       return;
     }
 
