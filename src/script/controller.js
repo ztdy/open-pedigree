@@ -225,6 +225,16 @@ var Controller = Class.create({
           twinUpdate[propertySetFunction] = propValue;
         }
 
+        // Zygosity-unknown is a whole-twin-group property drawn on the childhub ("?"), so it
+        // propagates to every twin and forces a relationship redraw — same as monozygotic.
+        if (propertySetFunction == 'setTwinZygosityUnknown') {
+          needUpdateRelationship = true;
+          if (!twinUpdate) {
+            twinUpdate = {};
+          }
+          twinUpdate[propertySetFunction] = propValue;
+        }
+
         if (propertySetFunction == 'setConsanguinity' || propertySetFunction == 'setBrokenStatus') {
           // this updates the relationship lines, as well as any lines
           // crossed by the relationship llines to maintain correct crossing graphics

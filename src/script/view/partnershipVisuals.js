@@ -372,6 +372,14 @@ var PartnershipVisuals = Class.create(AbstractNodeVisuals, {
           var xIntercept1 = findXInterceptGivenLineAndY( twinlineY, currentTwinGroupCenterX, childlineY+twinCommonVerticalPieceLength, positionL, positionY);
           var xIntercept2 = findXInterceptGivenLineAndY( twinlineY, currentTwinGroupCenterX, childlineY+twinCommonVerticalPieceLength, positionR, positionY);
           editor.getView().drawLineWithCrossings( id, xIntercept1, twinlineY, xIntercept2, twinlineY, PedigreeEditorParameters.attributes.partnershipLines);
+        } else if (editor.getView().getNode(allTwins[0]).getTwinZygosityUnknown &&
+                   editor.getView().getNode(allTwins[0]).getTwinZygosityUnknown()) {
+          // Unknown zygosity: a "?" beside the twin junction (NSGC group E). Monozygotic takes
+          // precedence; dizygotic (neither flag) draws nothing. This text is captured by the
+          // surrounding setStart/setFinish so it is cleared on every childhub redraw.
+          editor.getPaper().text(currentTwinGroupCenterX + 9,
+                                 childlineY + twinCommonVerticalPieceLength/2, '?')
+            .attr(PedigreeEditorParameters.attributes.label);
         }
       } else if (twinGroupId == null) {
         numPregnancies++;

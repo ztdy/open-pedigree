@@ -57,6 +57,9 @@ var Person = Class.create(AbstractPerson, {
     this._candidateGenes = [];
     this._twinGroup = null;
     this._monozygotic = false;
+    // Twin zygosity explicitly recorded as unknown (NSGC group E: draws a "?" at the twin
+    // junction). A group property: mutually exclusive with monozygotic in the UI.
+    this._twinZygosityUnknown = false;
     this._evaluated = false;
     this._lostContact = false;
     // Sex assigned at birth, recorded separately from the symbol/gender (NSGC 2022 update):
@@ -293,6 +296,30 @@ var Person = Class.create(AbstractPerson, {
      */
   getMonozygotic: function() {
     return this._monozygotic;
+  },
+
+  /**
+     * Returns whether this twin's zygosity is explicitly recorded as unknown.
+     *
+     * @method getTwinZygosityUnknown
+     * @return {Boolean}
+     */
+  getTwinZygosityUnknown: function() {
+    return this._twinZygosityUnknown;
+  },
+
+  /**
+     * Records the twin's zygosity as unknown (draws a "?" at the twin junction). The childhub
+     * redraw + propagation to the whole twin group are driven by the controller (mirrors the
+     * monozygotic handling), so this only flips the flag.
+     *
+     * @method setTwinZygosityUnknown
+     */
+  setTwinZygosityUnknown: function(unknown) {
+    if (unknown == this._twinZygosityUnknown) {
+      return;
+    }
+    this._twinZygosityUnknown = unknown;
   },
 
   /**
@@ -899,6 +926,9 @@ var Person = Class.create(AbstractPerson, {
       childlessSelect: {value : this.getChildlessStatus() ? this.getChildlessStatus() : 'none', inactive : childlessInactive},
       placeholder:   {value : false, inactive: true },
       monozygotic:   {value : this.getMonozygotic(), inactive: inactiveMonozygothic, disabled: disableMonozygothic },
+      // Zygosity-unknown is available for any twin (no same-gender requirement), but mutually
+      // exclusive with monozygotic in the UI, so disable it while monozygotic is checked.
+      zygosityUnknown: {value : this.getTwinZygosityUnknown(), inactive: inactiveMonozygothic, disabled: this.getMonozygotic() },
       evaluated:     {value : this.getEvaluated() },
       hpo_positive:  {value : hpoTerms},
       nocontact:     {value : this.getLostContact(), inactive: inactiveLostContact}
@@ -965,6 +995,9 @@ var Person = Class.create(AbstractPerson, {
     }
     if (this._monozygotic) {
       info['monozygotic'] = this._monozygotic;
+    }
+    if (this._twinZygosityUnknown) {
+      info['twinZygosityUnknown'] = this._twinZygosityUnknown;
     }
     if (this._evaluated) {
       info['evaluated'] = this._evaluated;
@@ -1033,6 +1066,9 @@ var Person = Class.create(AbstractPerson, {
       }
       if(info.hasOwnProperty('monozygotic') && this._monozygotic != info.monozygotic) {
         this.setMonozygotic(info.monozygotic);
+      }
+      if(info.hasOwnProperty('twinZygosityUnknown') && this._twinZygosityUnknown != info.twinZygosityUnknown) {
+        this.setTwinZygosityUnknown(info.twinZygosityUnknown);
       }
       if(info.hasOwnProperty('evaluated') && this._evaluated != info.evaluated) {
         this.setEvaluated(info.evaluated);

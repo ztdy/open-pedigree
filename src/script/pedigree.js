@@ -551,6 +551,13 @@ var PedigreeEditor = Class.create({
         'function' : 'setMonozygotic'
       },
       {
+        'name' : 'zygosityUnknown',
+        'label' : 'Unknown zygosity',
+        'type' : 'checkbox',
+        'tab': 'Personal',
+        'function' : 'setTwinZygosityUnknown'
+      },
+      {
         'name' : 'nocontact',
         'label' : 'Not in contact with proband',
         'type' : 'checkbox',

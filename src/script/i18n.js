@@ -40,6 +40,7 @@ var MESSAGES = {
     'Heredity options': '遗传选项',
     'Adopted': '收养',
     'Monozygotic twin': '同卵双胞胎',
+    'Unknown zygosity': '合子型未知',
     'Not in contact with proband': '与先证者失去联系',
     'Placeholder node': '占位节点',
     'Comments': '备注',
