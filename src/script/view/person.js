@@ -336,6 +336,7 @@ var Person = Class.create(AbstractPerson, {
   _isValidLifeStatus: function(status) {
     return (status == 'unborn' || status == 'stillborn'
             || status == 'aborted' || status == 'miscarriage'
+            || status == 'ectopic'
             || status == 'alive' || status == 'deceased');
   },
 
@@ -821,7 +822,7 @@ var Person = Class.create(AbstractPerson, {
      */
   getSummary: function() {
     var onceAlive = editor.getGraph().hasRelationships(this.getID());
-    var inactiveStates = onceAlive ? ['unborn','aborted','miscarriage','stillborn'] : false;
+    var inactiveStates = onceAlive ? ['unborn','aborted','miscarriage','stillborn','ectopic'] : false;
 
     var inactiveGenders = false;
     var genderSet = editor.getGraph().getPossibleGenders(this.getID());
@@ -870,7 +871,7 @@ var Person = Class.create(AbstractPerson, {
         inactiveCarriers = [''];
       }
     }
-    if (this.getLifeStatus() == 'aborted' || this.getLifeStatus() == 'miscarriage') {
+    if (this.getLifeStatus() == 'aborted' || this.getLifeStatus() == 'miscarriage' || this.getLifeStatus() == 'ectopic') {
       inactiveCarriers.push('presymptomatic');
     }
 

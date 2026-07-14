@@ -61,6 +61,7 @@ var MESSAGES = {
     'Stillborn': '死产',
     'Deceased': '已故',
     'Miscarriage': '流产',
+    'Ectopic': '异位妊娠',
     'Unborn': '未出生',
     'Aborted': '人工流产',
     'None': '无',

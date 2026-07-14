@@ -512,6 +512,7 @@ var PedigreeEditor = Class.create({
           { 'actual' : 'stillborn', 'displayed' : 'Stillborn' },
           { 'actual' : 'deceased', 'displayed' : 'Deceased' },
           { 'actual' : 'miscarriage', 'displayed' : 'Miscarriage' },
+          { 'actual' : 'ectopic', 'displayed' : 'Ectopic' },
           { 'actual' : 'unborn', 'displayed' : 'Unborn' },
           { 'actual' : 'aborted', 'displayed' : 'Aborted' }
         ],
@@ -648,7 +649,8 @@ var PedigreeEditor = Class.create({
           { 'actual' : 'alive', 'displayed' : 'Alive' },
           { 'actual' : 'aborted', 'displayed' : 'Aborted' },
           { 'actual' : 'deceased', 'displayed' : 'Deceased' },
-          { 'actual' : 'miscarriage', 'displayed' : 'Miscarriage' }
+          { 'actual' : 'miscarriage', 'displayed' : 'Miscarriage' },
+          { 'actual' : 'ectopic', 'displayed' : 'Ectopic' }
         ],
         'default' : 'alive',
         'function' : 'setLifeStatus'

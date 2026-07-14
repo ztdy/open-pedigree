@@ -60,7 +60,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      */
   setGenderGraphics: function($super) {
     //console.log("set gender graphics");
-    if(this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage') {
+    if(this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
       this._genderGraphics && this._genderGraphics.remove();
 
       var radius = PedigreeEditorParameters.attributes.radius;
@@ -255,7 +255,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     var disorderShapes = editor.getPaper().set();
     var delta, color;
 
-    if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage') {
+    if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
       var radius = PedigreeEditorParameters.attributes.radius;
       if (this.getNode().isPersonGroup()) {
         radius *= PedigreeEditorParameters.attributes.groupNodesScale;
@@ -445,7 +445,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   updateEvaluationLabel: function() {
     this._evalLabel && this._evalLabel.remove();
     if (this.getNode().getEvaluated()) {
-      if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage') {
+      if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
         var x = this.getX() + this._shapeRadius * 1.6;
         var y = this.getY() + this._shapeRadius * 0.6;
       } else {
@@ -492,7 +492,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
 
     if (status != '' && status != 'affected') {
       if (status == 'carrier') {
-        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage') {
+        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
           x = this.getX();
           y = this.getY() - this._radius/2;
         } else {
@@ -501,7 +501,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
         }
         this._carrierGraphic = editor.getPaper().circle(x, y, PedigreeEditorParameters.attributes.carrierDotRadius).attr(PedigreeEditorParameters.attributes.carrierShape);
       } else if (status == 'presymptomatic') {
-        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage') {
+        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
           this._carrierGraphic = null;
           return;
         }
@@ -557,8 +557,12 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      */
   updateSBLabel: function() {
     this.getSBLabel() && this.getSBLabel().remove();
-    if (this.getNode().getLifeStatus() == 'stillborn') {
-      this._stillBirthLabel = editor.getPaper().text(this.getX(), this.getY(), I18n.t('SB')).attr(PedigreeEditorParameters.attributes.label);
+    // Same in-symbol label slot serves stillbirth ("SB") and ectopic pregnancy ("ECT").
+    // The "ECT" abbreviation is the standard nomenclature and is not localized.
+    var status = this.getNode().getLifeStatus();
+    var text = (status == 'stillborn') ? I18n.t('SB') : (status == 'ectopic' ? 'ECT' : null);
+    if (text) {
+      this._stillBirthLabel = editor.getPaper().text(this.getX(), this.getY(), text).attr(PedigreeEditorParameters.attributes.label);
     } else {
       this._stillBirthLabel = null;
     }
@@ -605,8 +609,8 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.getSBLabel()     && this.getSBLabel().remove();
 
     // save some redraws if possible
-    var oldShapeType = (oldStatus == 'aborted' || oldStatus == 'miscarriage');
-    var newShapeType = (status    == 'aborted' || status    == 'miscarriage');
+    var oldShapeType = (oldStatus == 'aborted' || oldStatus == 'miscarriage' || oldStatus == 'ectopic');
+    var newShapeType = (status    == 'aborted' || status    == 'miscarriage' || status    == 'ectopic');
     if (oldShapeType != newShapeType) {
       this.setGenderGraphics();
     }
@@ -615,6 +619,9 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       this.drawDeadShape();
     } else if (status == 'stillborn') {
       this.drawDeadShape();
+      this.updateSBLabel();
+    } else if (status == 'ectopic') {
+      // Ectopic pregnancy: a small triangle (loss) with an "ECT" label, no death slash.
       this.updateSBLabel();
     } else if (status == 'unborn') {
       this.drawUnbornShape();
