@@ -837,6 +837,18 @@ var Person = Class.create(AbstractPerson, {
       this._childlessStatus = status;
       this.getGraphics().updateChildlessShapes();
       this.getGraphics().getHoverBox().regenerateHandles();
+      // The mark also hides the child handle on every partnership this person is part of, so
+      // those partnership hoverboxes must be regenerated too — otherwise their handle set stays
+      // cached across hovers (hover-out only hides, it doesn't remove) and a stale child handle
+      // would still add a child, contradicting the "no children"/"infertile" mark. Regenerating
+      // also restores the handle when the mark is cleared.
+      var rels = editor.getGraph().DG.GG.getAllRelationships(this.getID());
+      for (var r = 0; r < rels.length; r++) {
+        var relNode = editor.getView().getNode(rels[r]);
+        if (relNode && relNode.getGraphics && relNode.getGraphics().getHoverBox()) {
+          relNode.getGraphics().getHoverBox().regenerateHandles();
+        }
+      }
     }
     return this.getChildlessStatus();
   },

@@ -114,7 +114,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     // recurses back into setGenderGraphics. Guarded on the hoverbox because during initial
     // construction it does not exist yet (drawLabels dereferences it) — the life-status shapes
     // are drawn by setLifeStatus once the node is fully built.
-    if (this.getHoverBox()) {
+    if (this.getHoverBox() && !this._refreshingLifeStatus) {
       this.updateLifeStatusShapes(this.getNode().getLifeStatus());
     }
   },
@@ -622,7 +622,16 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     var oldShapeType = (oldStatus == 'aborted' || oldStatus == 'miscarriage' || oldStatus == 'ectopic');
     var newShapeType = (status    == 'aborted' || status    == 'miscarriage' || status    == 'ectopic');
     if (oldShapeType != newShapeType) {
-      this.setGenderGraphics();
+      // setGenderGraphics re-draws the life-status shapes on its own tail; suppress that here so
+      // the shapes drawn just below aren't drawn a second time (the first copy would be orphaned
+      // — e.g. drawDeadShape overwrites _deadShape without removing the earlier slash, leaving a
+      // stray slash that survives a later revert to "alive").
+      this._refreshingLifeStatus = true;
+      try {
+        this.setGenderGraphics();
+      } finally {
+        this._refreshingLifeStatus = false;
+      }
     }
 
     if(status == 'deceased' || status == 'aborted') {  // but not "miscarriage"
