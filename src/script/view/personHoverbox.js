@@ -72,6 +72,10 @@ var PersonHoverbox = Class.create(AbstractHoverbox, {
 
     if (!node.isFetus()) {
 
+      // Both the child handle and the partner handle can give this individual a child (the
+      // partner handle fires "newpartnerandchild"), so a childless/infertile individual must
+      // offer neither — otherwise the "no children" / "infertile" mark could be silently
+      // contradicted. The hidden handles are the indication.
       if (node.getChildlessStatus() === null) {
         // children handle
         //static part (going right below the node)
@@ -79,15 +83,15 @@ var PersonHoverbox = Class.create(AbstractHoverbox, {
         editor.getPaper().path(path).attr({'stroke-width': strokeWidth, stroke: 'gray'}).insertBefore(nodeShapes);
         this.generateHandle('child', x, y+PedigreeEditorParameters.attributes.personHandleBreakX-2, x, y+PedigreeEditorParameters.attributes.personHandleLength,
           I18n.t('Click to create a new child node or drag to an existing parentless person (valid choices will be highlighted in green)'));
-      }
 
-      // partner handle
-      var vertPosForPartnerHandles = y;
-      //static part (going right form the node)
-      var path = [['M', x, vertPosForPartnerHandles],['L', x + PedigreeEditorParameters.attributes.personHandleBreakX, vertPosForPartnerHandles]];
-      editor.getPaper().path(path).attr({'stroke-width': strokeWidth, stroke: 'gray'}).insertBefore(nodeShapes);
-      this.generateHandle('partnerR', x + PedigreeEditorParameters.attributes.personHandleBreakX - 2, vertPosForPartnerHandles, x + PedigreeEditorParameters.attributes.personHandleLength, vertPosForPartnerHandles,
-        I18n.t('Click to create a new partner node or drag to an existing node (valid choices will be highlighted in green)'));
+        // partner handle
+        var vertPosForPartnerHandles = y;
+        //static part (going right form the node)
+        var path = [['M', x, vertPosForPartnerHandles],['L', x + PedigreeEditorParameters.attributes.personHandleBreakX, vertPosForPartnerHandles]];
+        editor.getPaper().path(path).attr({'stroke-width': strokeWidth, stroke: 'gray'}).insertBefore(nodeShapes);
+        this.generateHandle('partnerR', x + PedigreeEditorParameters.attributes.personHandleBreakX - 2, vertPosForPartnerHandles, x + PedigreeEditorParameters.attributes.personHandleLength, vertPosForPartnerHandles,
+          I18n.t('Click to create a new partner node or drag to an existing node (valid choices will be highlighted in green)'));
+      }
     }
 
     this._currentHandles.push( editor.getPaper().setFinish() );

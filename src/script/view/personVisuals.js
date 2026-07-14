@@ -107,6 +107,16 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.updateDisorderShapes();
     this.updateCarrierGraphic();
     this.updateEvaluationLabel();
+    // Regenerating the gender shape drops/covers the life-status graphics that layer on top of
+    // it (the "P" pregnancy marker, the death slash, the SB/ECT label). Re-draw them so e.g.
+    // changing the gender of an unborn individual no longer wipes its "P". Passing the current
+    // status as the "old" status guarantees oldShapeType == newShapeType, so this never
+    // recurses back into setGenderGraphics. Guarded on the hoverbox because during initial
+    // construction it does not exist yet (drawLabels dereferences it) — the life-status shapes
+    // are drawn by setLifeStatus once the node is fully built.
+    if (this.getHoverBox()) {
+      this.updateLifeStatusShapes(this.getNode().getLifeStatus());
+    }
   },
 
   generateProbandArrow: function() {

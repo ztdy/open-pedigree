@@ -65,6 +65,26 @@ Import **PED**, **GEDCOM**, **BOADICEA** and **GA4GH FHIR** files straight into 
 entry, with format auto‑detection and a clean rollback if a file can't be parsed. Single‑person
 imports are handled correctly.
 
+### 🌐 Bilingual interface (English / 简体中文)
+The UI ships in **English and Simplified Chinese**, switchable from the top‑right corner, and your
+choice is remembered. Switching languages **keeps your data** — the pedigree, library and every
+filled‑in field stay exactly as they were.
+
+### 🔄 Built‑in auto‑update
+On launch the app **quietly checks for a newer version** and, when one is available, offers an
+in‑app one‑click upgrade — no need to visit the Releases page and reinstall by hand.
+
+### 🩺 NSGC 2022 inclusive clinical notation
+Individual annotations follow the
+[NSGC / PSTF 2022 inclusive pedigree‑nomenclature update](https://onlinelibrary.wiley.com/doi/10.1002/jgc4.1621):
+
+- **Sex assigned at birth** — the gender symbol conveys **gender identity**, while a separate
+  **AMAB / AFAB / UAAB** annotation records the assigned sex and takes precedence in the PED export.
+- **Ectopic pregnancy (ECT)** — alongside spontaneous abortion / termination, an ectopic life
+  status draws the triangle symbol labelled **ECT**.
+- **Twins of unknown zygosity** — a multiple can be marked **unknown zygosity**, tagging the
+  connector with a **?** (distinct from known monozygotic / dizygotic).
+
 ---
 
 ## Feature summary
@@ -76,6 +96,9 @@ imports are handled correctly.
 - 🎯 **Proband designation** — authoritative (drives relatedness + GA4GH/FHIR export), single‑step undo
 - 🎨 **Recolor legend entries** — saved and restored with the pedigree
 - 📥 **Import PED / GEDCOM / BOADICEA / GA4GH FHIR** as a new pedigree
+- 🌐 **Bilingual UI (English / 简体中文)** — one‑click switch, remembered, no data loss
+- 🔄 **Built‑in auto‑update** — quiet check on launch, in‑app one‑click upgrade
+- 🩺 **NSGC 2022 clinical notation** — sex assigned at birth (AMAB/AFAB/UAAB), ectopic pregnancy (ECT), unknown‑zygosity twins (?)
 
 ---
 

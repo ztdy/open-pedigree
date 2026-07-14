@@ -39,6 +39,16 @@ var PartnershipHoverbox = Class.create(AbstractHoverbox, {
       return;
     }
 
+    // A childless/infertile partner also blocks this relationship from gaining children, so the
+    // person's "no children"/"infertile" mark holds through every partnership they are part of.
+    var partners = editor.getGraph().DG.GG.getParents(this.getNode().getID());
+    for (var p = 0; p < partners.length; p++) {
+      var partnerNode = editor.getView().getNode(partners[p]);
+      if (partnerNode && typeof partnerNode.getChildlessStatus === 'function' && partnerNode.getChildlessStatus() !== null) {
+        return;
+      }
+    }
+
     var x = this.getNodeX();
     var y = this.getNodeY();
     var strokeWidth = editor.getWorkspace().getSizeNormalizedToDefaultZoom(PedigreeEditorParameters.attributes.handleStrokeWidth);
