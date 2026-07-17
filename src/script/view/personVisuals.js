@@ -896,10 +896,11 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.getGeneLabel() && labels.push(this.getGeneLabel());
     this.getGenotypeLabel() && labels.push(this.getGenotypeLabel());
     this.getCommentsLabel() && labels.push(this.getCommentsLabel());
-    // The assisted-reproduction "D"/"G" letter is a node graphic like the others: include it so it
-    // is removed and moved with the node. Otherwise deleting (or replacing) a donor/carrier leaves
-    // the label orphaned on the canvas.
-    this.getArtRoleLabel() && labels.push(this.getArtRoleLabel());
+    // NOTE: the assisted-reproduction "D"/"G" letter is deliberately NOT in this set. These labels
+    // get re-stacked vertically below the symbol by drawLabels(); the ART letter belongs INSIDE the
+    // symbol (drawn at the node centre), so it is carried by getAllGraphics() instead — alongside
+    // the carrier dot and the evaluation "*", which are positioned the same way. (Putting it here
+    // made a redraw/pan move the letter down into the label stack.)
     return labels;
   },
 
@@ -964,7 +965,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      */
   getAllGraphics: function($super) {
     //console.log("Node " + this.getNode().getID() + " getAllGraphics");
-    return $super().push(this.getHoverBox().getBackElements(), this.getLabels(), this.getCarrierGraphics(), this.getEvaluationGraphics(), this.getHoverBox().getFrontElements());
+    return $super().push(this.getHoverBox().getBackElements(), this.getLabels(), this.getCarrierGraphics(), this.getEvaluationGraphics(), this.getArtRoleLabel(), this.getHoverBox().getFrontElements());
   },
 
   /**

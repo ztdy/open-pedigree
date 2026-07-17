@@ -1,7 +1,7 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
