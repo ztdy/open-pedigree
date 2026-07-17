@@ -19,7 +19,7 @@ var _cjkFontPromise = null;
 function loadCJKFont() {
   if (_cjkFontPromise) { return _cjkFontPromise; }
   var isDesktop = typeof window !== 'undefined' && window.openPedigreeDesktop && window.openPedigreeDesktop.isDesktop;
-  var url = isDesktop ? 'opdata://fonts/sc' : 'vendor/fonts/NotoSansSC-Regular.otf';
+  var url = isDesktop ? 'opdata://fonts/sc' : 'vendor/fonts/NotoSansSC-Regular.ttf';
   _cjkFontPromise = fetch(url).then(function (r) {
     if (!r.ok) { throw new Error('font HTTP ' + r.status); }
     return r.arrayBuffer();

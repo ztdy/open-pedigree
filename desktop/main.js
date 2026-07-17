@@ -72,13 +72,13 @@ function registerOfflineDataProtocol() {
       }
       // Serve the bundled CJK font so PDF export can embed Chinese glyphs offline.
       else if (kind === 'fonts') {
-        const map = { sc: 'NotoSansSC-Regular.otf' };
+        const map = { sc: 'NotoSansSC-Regular.ttf' };
         const key = u.pathname.replace(/^\/+/, '') || 'sc';
         const fname = map[key] || map.sc;
         const buf = await fsp.readFile(path.join(__dirname, 'fonts', fname));
         return new Response(buf, {
           status: 200,
-          headers: { 'Content-Type': 'font/otf', 'Access-Control-Allow-Origin': '*' }
+          headers: { 'Content-Type': 'font/ttf', 'Access-Control-Allow-Origin': '*' }
         });
       }
       else return new Response('unknown dataset', { status: 404 });
