@@ -1,7 +1,7 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
@@ -28,7 +28,7 @@
     "publish": {
       "provider": "github",
       "owner": "ztdy",
-      "repo": "open-pedigree",
+      "repo": "pedigree",
       "releaseType": "release"
     },
     "asar": true,
@@ -52,10 +52,12 @@
       "offlineData.js",
       "updater.js",
       "i18n.js",
+      "seedExamples.js",
       "library.html",
       "data/**/*",
       "fonts/**/*",
       "renderer/**/*",
+      "examples/seeds/**/*",
       "package.json",
       "!**/*.map",
       "!renderer/public/vendor/font-awesome/scss/**/*"

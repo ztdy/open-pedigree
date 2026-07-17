@@ -1,0 +1,309 @@
+{
+  "fileFormatVersion": 1,
+  "documentId": "64e0eb53-74a4-4674-a904-f4e6885b940b",
+  "title": "囊性纤维化 · Cystic fibrosis (autosomal recessive)",
+  "project": "示例家系 · Example pedigrees",
+  "isExample": true,
+  "createdAt": "2026-01-01T11:55:00.000Z",
+  "updatedAt": "2026-01-01T11:55:00.000Z",
+  "localizedTitle": {
+    "zh": "囊性纤维化",
+    "en": "Cystic fibrosis (autosomal recessive)"
+  },
+  "localizedProject": {
+    "zh": "示例家系",
+    "en": "Example pedigrees"
+  },
+  "description": "常染色体隐性经典范例：两位表型正常的携带者父母，约1/4子女患病；携带者与非携带者仅靠检测区分；同胞组内水平聚集、家系其他部位无患者。先证者 III-1。\n来源/Source: Standard CF genetics (Cystic Fibrosis Foundation; CFTR2 database). [ex:64e0eb53]",
+  "localizedDescription": {
+    "zh": "常染色体隐性经典范例：两位表型正常的携带者父母，约1/4子女患病；携带者与非携带者仅靠检测区分；同胞组内水平聚集、家系其他部位无患者。先证者 III-1。\n来源/Source: Standard CF genetics (Cystic Fibrosis Foundation; CFTR2 database). [ex:64e0eb53]",
+    "en": "A classic autosomal recessive example: two phenotypically normal carrier parents, about 1/4 of children affected; carriers and non-carriers are distinguished only by testing; horizontal clustering within one sibship with no affected individuals elsewhere in the family. Proband III-1.\n来源/Source: Standard CF genetics (Cystic Fibrosis Foundation; CFTR2 database). [ex:64e0eb53]"
+  },
+  "graph": {
+    "GG": [
+      {
+        "id": 0,
+        "prop": {
+          "gender": "M",
+          "carrierStatus": "carrier",
+          "fName": "I-1"
+        },
+        "outedges": [
+          {
+            "to": 12
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "prop": {
+          "gender": "F",
+          "fName": "I-2"
+        },
+        "outedges": [
+          {
+            "to": 12
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "prop": {
+          "gender": "M",
+          "fName": "I-3"
+        },
+        "outedges": [
+          {
+            "to": 14
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "prop": {
+          "gender": "F",
+          "carrierStatus": "carrier",
+          "fName": "I-4"
+        },
+        "outedges": [
+          {
+            "to": 14
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "prop": {
+          "gender": "M",
+          "carrierStatus": "carrier",
+          "fName": "II-1"
+        },
+        "outedges": [
+          {
+            "to": 16
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "prop": {
+          "gender": "F",
+          "carrierStatus": "carrier",
+          "fName": "II-2"
+        },
+        "outedges": [
+          {
+            "to": 16
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "prop": {
+          "gender": "F",
+          "fName": "II-3"
+        }
+      },
+      {
+        "id": 7,
+        "prop": {
+          "gender": "M",
+          "fName": "II-4"
+        }
+      },
+      {
+        "id": 8,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Cystic__fibrosis"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "CFTR"
+          ],
+          "proband": true,
+          "fName": "III-1"
+        }
+      },
+      {
+        "id": 9,
+        "prop": {
+          "gender": "F",
+          "carrierStatus": "carrier",
+          "fName": "III-2"
+        }
+      },
+      {
+        "id": 10,
+        "prop": {
+          "gender": "M",
+          "fName": "III-3"
+        }
+      },
+      {
+        "id": 11,
+        "prop": {
+          "gender": "F",
+          "disorders": [
+            "Cystic__fibrosis"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "CFTR"
+          ],
+          "fName": "III-4"
+        }
+      },
+      {
+        "id": 12,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 13
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 6
+          },
+          {
+            "to": 4
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 15
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 5
+          },
+          {
+            "to": 7
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 17
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 11
+          },
+          {
+            "to": 10
+          },
+          {
+            "to": 9
+          },
+          {
+            "to": 8
+          }
+        ]
+      }
+    ],
+    "ranks": [
+      1,
+      1,
+      1,
+      1,
+      3,
+      3,
+      3,
+      3,
+      5,
+      5,
+      5,
+      5,
+      1,
+      2,
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": [
+      [],
+      [
+        0,
+        12,
+        1,
+        2,
+        14,
+        3
+      ],
+      [
+        13,
+        15
+      ],
+      [
+        6,
+        4,
+        16,
+        5,
+        7
+      ],
+      [
+        17
+      ],
+      [
+        11,
+        10,
+        9,
+        8
+      ]
+    ],
+    "positions": [
+      7,
+      31,
+      51,
+      75,
+      29,
+      53,
+      9,
+      73,
+      71,
+      51,
+      31,
+      11,
+      19,
+      19,
+      63,
+      63,
+      41,
+      41
+    ]
+  }
+}

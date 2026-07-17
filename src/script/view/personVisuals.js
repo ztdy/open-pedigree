@@ -30,7 +30,10 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this._stillBirthLabel = null;
     this._ageLabel = null;
     this._externalIDLabel = null;
+    this._geneLabel = null;
+    this._genotypeLabel = null;
     this._sexLabel = null;
+    this._artRoleLabel = null;
     this._commentsLabel = null;
     this._childlessStatusLabel = null;
     this._disorderShapes = null;
@@ -100,6 +103,11 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       this._genderGraphics.push(this.generateProbandArrow());
       this.getGenderShape().transform(['...s', 1.08]);
       this.getGenderShape().attr('stroke-width', 5.5);
+    } else if (this.getNode().isConsultand && this.getNode().isConsultand()) {
+      // Someone who is BOTH is drawn as the proband (branch above): NSGC defines no combined
+      // symbol, and "arrow + P" is the more specific of the two statements. The heavier outline
+      // stays proband-only for the same reason — it is emphasis for the index case.
+      this._genderGraphics.push(this.generateConsultandArrow());
     }
     if(!editor.isUnsupportedBrowser() && this.getHoverBox()) {
       this._genderGraphics.flatten().insertBefore(this.getFrontElements().flatten());
@@ -108,18 +116,28 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.updateCarrierGraphic();
     this.updateEvaluationLabel();
     // Regenerating the gender shape drops/covers the life-status graphics that layer on top of
-    // it (the "P" pregnancy marker, the death slash, the SB/ECT label). Re-draw them so e.g.
-    // changing the gender of an unborn individual no longer wipes its "P". Passing the current
+    // it (the "P" pregnancy marker, the death slash, the SB/ECT label, the ART "D"/"G" letter).
+    // Re-draw them so e.g. changing the gender of an unborn individual no longer wipes its "P".
+    // Passing the current
     // status as the "old" status guarantees oldShapeType == newShapeType, so this never
     // recurses back into setGenderGraphics. Guarded on the hoverbox because during initial
     // construction it does not exist yet (drawLabels dereferences it) — the life-status shapes
     // are drawn by setLifeStatus once the node is fully built.
     if (this.getHoverBox() && !this._refreshingLifeStatus) {
       this.updateLifeStatusShapes(this.getNode().getLifeStatus());
+      this.updateArtRoleLabel();
     }
   },
 
-  generateProbandArrow: function() {
+  /**
+     * Draws the arrow shared by the proband and consultand markers, and returns it along with
+     * the origin it was placed at, so a caller can position the "P" relative to it.
+     *
+     * @method _generateMarkerArrow
+     * @return {Object} {icon: Raphael.el, x: Number, y: Number}
+     * @private
+     */
+  _generateMarkerArrow: function() {
     var icon = editor.getPaper().path(editor.getView().__probandArrowPath).attr({fill: '#595959', stroke: 'none', opacity: 1});
     var x = this.getX()-this._shapeRadius-26;
     var y = this.getY()+this._shapeRadius-12;
@@ -128,7 +146,44 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       y -= 5;
     }
     icon.transform(['t' , x, y]);
-    return icon;
+    return { icon: icon, x: x, y: y };
+  },
+
+  /**
+     * Draws the proband marker: the arrow, plus the "P" that identifies it AS the proband.
+     *
+     * The "P" is not decoration. NSGC (Bennett et al. 2022 Figure 2, unchanged by the 2025
+     * correction, and the 2008 guidelines before it) gives the arrow two meanings, told apart
+     * only by the letter:
+     *   arrow + "P"  = proband   — the affected family member who brought the family to attention
+     *   arrow alone  = consultand — the individual seeking counseling
+     * Drawing the arrow bare therefore says "consultand", which is not what this flag means.
+     *
+     * Returns a set so the caller can push both parts into the gender graphics at once — the
+     * marker is regenerated with the symbol, so the two must live and die together.
+     *
+     * @method generateProbandArrow
+     * @return {Raphael.st}
+     */
+  generateProbandArrow: function() {
+    var arrow = this._generateMarkerArrow();
+    // At the arrow's tail, outside the symbol: the arrow runs from its lower-left origin up
+    // towards the symbol's corner, so this is the one spot that stays clear of both the symbol
+    // and of the labels stacked underneath it.
+    var label = editor.getPaper().text(arrow.x - 9, arrow.y + 33, 'P')
+      .attr(PedigreeEditorParameters.attributes.probandLabel);
+    return editor.getPaper().set(arrow.icon, label);
+  },
+
+  /**
+     * Draws the consultand marker: the same arrow, WITHOUT the "P" — that absence is what
+     * makes it say "consultand" rather than "proband" (see generateProbandArrow).
+     *
+     * @method generateConsultandArrow
+     * @return {Raphael.el}
+     */
+  generateConsultandArrow: function() {
+    return this._generateMarkerArrow().icon;
   },
 
   /**
@@ -152,6 +207,28 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   },
 
   /**
+     * Tags a text label with what KIND of information it carries, so the SVG/PDF export can
+     * redact by meaning rather than by appearance.
+     *
+     * The export used to select text to remove by FONT SIZE, which was wrong in both
+     * directions: the external ID label is 18px so an MRN survived every privacy level, while
+     * 20px is the shared `label` size so the SB/ECT annotation, AMAB/AFAB and the gender label
+     * were stripped along with the name. Size is a styling decision; it must not decide what
+     * counts as identifying information.
+     *
+     * @method _tagLabel
+     * @param {Raphael.el} label
+     * @param {String} className one of the PII_* classes read by PedigreeExport
+     * @private
+     */
+  _tagLabel: function(label, className) {
+    if (label && label.node) {
+      label.node.setAttribute('class', className);
+    }
+    return label;
+  },
+
+  /**
      * Updates the external ID label for this Person
      *
      * @method updateExternalIDLabel
@@ -161,11 +238,73 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
 
     if (this.getNode().getExternalID()) {
       var text = '[' + this.getNode().getExternalID() + ']';
-      this._externalIDLabel = editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, text).attr(PedigreeEditorParameters.attributes.externalIDLabels);
+      this._externalIDLabel = this._tagLabel(editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, text).attr(PedigreeEditorParameters.attributes.externalIDLabels), 'pii-external-id');
     } else {
       this._externalIDLabel = null;
     }
     this.drawLabels();
+  },
+
+  /**
+     * Updates the candidate-gene text label shown below the symbol. Candidate genes used to tint the
+     * symbol (a fill sector); per NSGC 2022/2025 the fill means phenotype, so the gene is shown as
+     * text instead. The text is tinted with the gene's legend colour when there is a single gene, so
+     * the "Candidate Genes" legend still reads as a colour key; multiple genes fall back to the
+     * default label colour.
+     *
+     * @method updateGeneLabel
+     */
+  updateGeneLabel: function() {
+    this._geneLabel && this._geneLabel.remove();
+    var genes = this.getNode().getGenes();
+    if (genes && genes.length) {
+      var label = editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, genes.join(', '))
+        .attr(PedigreeEditorParameters.attributes.geneLabels);
+      if (genes.length == 1) {
+        var color = editor.getGeneLegend().getObjectColor(genes[0]);
+        if (color) { label.attr('fill', color); }
+      }
+      this._geneLabel = this._tagLabel(label, 'gene-label');
+    } else {
+      this._geneLabel = null;
+    }
+    this.drawLabels();
+  },
+
+  /**
+     * Returns the Person's candidate-gene label.
+     * @method getGeneLabel
+     * @return {Raphael.el}
+     */
+  getGeneLabel: function() {
+    return this._geneLabel;
+  },
+
+  /**
+     * Updates the free-text genotype / variant annotation shown below the symbol (e.g.
+     * "BRCA1 c.68_69del (+)"). This is the NSGC 2022/2025-recommended place for a specific
+     * evaluation/variant result: text below the symbol, no "E" prefix (the E notation was retired).
+     *
+     * @method updateGenotypeLabel
+     */
+  updateGenotypeLabel: function() {
+    this._genotypeLabel && this._genotypeLabel.remove();
+    var genotype = this.getNode().getGenotype && this.getNode().getGenotype();
+    if (genotype) {
+      this._genotypeLabel = this._tagLabel(editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, genotype).attr(PedigreeEditorParameters.attributes.geneLabels), 'genotype');
+    } else {
+      this._genotypeLabel = null;
+    }
+    this.drawLabels();
+  },
+
+  /**
+     * Returns the Person's genotype / variant label.
+     * @method getGenotypeLabel
+     * @return {Raphael.el}
+     */
+  getGenotypeLabel: function() {
+    return this._genotypeLabel;
   },
 
   /**
@@ -197,6 +336,43 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   },
 
   /**
+     * Updates the assisted-reproduction letter ("D" donor / "G" gestational carrier) drawn
+     * INSIDE the symbol, per NSGC 2022 Figure 5 as corrected in 2025 (doi:10.1002/jgc4.2020).
+     * The letters are standard nomenclature and are not localized.
+     *
+     * Unlike the sex-assigned-at-birth annotation this sits at the centre of the symbol, which
+     * is the same slot the "P" pregnancy marker uses — they cannot collide, because a pregnancy
+     * is never itself a donor or a carrier (the menu field is inactive for a fetus).
+     *
+     * @method updateArtRoleLabel
+     */
+  updateArtRoleLabel: function() {
+    this._artRoleLabel && this._artRoleLabel.remove();
+
+    var role = this.getNode().getArtRole && this.getNode().getArtRole();
+    if (role) {
+      this._artRoleLabel = editor.getPaper().text(this.getX(), this.getY(), role)
+        .attr(PedigreeEditorParameters.attributes.artRoleShape);
+      // The hoverbox does not exist yet while the node is still being constructed; the label is
+      // re-drawn from setGenderGraphics once it does, so skipping the re-stacking here is safe.
+      if (!editor.isUnsupportedBrowser() && this.getHoverBox()) {
+        this._artRoleLabel.insertBefore(this.getHoverBox().getFrontElements());
+      }
+    } else {
+      this._artRoleLabel = null;
+    }
+  },
+
+  /**
+     * Returns this Person's assisted-reproduction letter.
+     *
+     * @method getArtRoleLabel
+     */
+  getArtRoleLabel: function() {
+    return this._artRoleLabel;
+  },
+
+  /**
      * Returns the Person's external ID label
      *
      * @method getExternalIDLabel
@@ -218,7 +394,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
 
     this._nameLabel && this._nameLabel.remove();
     if(text.strip() != '') {
-      this._nameLabel = editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, text).attr(PedigreeEditorParameters.attributes.nameLabels);
+      this._nameLabel = this._tagLabel(editor.getPaper().text(this.getX(), this.getY() + PedigreeEditorParameters.attributes.radius, text).attr(PedigreeEditorParameters.attributes.nameLabels), 'pii-name');
     } else {
       this._nameLabel = null;
     }
@@ -328,7 +504,10 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   drawDeadShape: function() {
     var strokeWidth = editor.getWorkspace().getSizeNormalizedToDefaultZoom(2.5);
     var x, y;
-    if(this.getNode().getLifeStatus() == 'aborted') {
+    // Both loss statuses drawn as a triangle need the slash scaled to the triangle; the branch
+    // below sizes it for a square/circle.
+    var status = this.getNode().getLifeStatus();
+    if(status == 'aborted' || status == 'ectopic') {
       var side   = PedigreeEditorParameters.attributes.radius * Math.sqrt(3.5);
       var height = side/Math.sqrt(2);
       if (this.getNode().isPersonGroup()) {
@@ -416,7 +595,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       }
     }
     this.getAgeLabel() && this.getAgeLabel().remove();
-    this._ageLabel = text ? editor.getPaper().text(this.getX(), this.getY(), text).attr(PedigreeEditorParameters.attributes.label) : null;
+    this._ageLabel = text ? this._tagLabel(editor.getPaper().text(this.getX(), this.getY(), text).attr(PedigreeEditorParameters.attributes.label), 'pii-age') : null;
     this.drawLabels();
   },
 
@@ -598,7 +777,7 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.getCommentsLabel() && this.getCommentsLabel().remove();
     if (this.getNode().getComments() != '') {
       var text = this.getNode().getComments(); //.replace(/\n/g, '<br />');
-      this._commentsLabel = editor.getPaper().text(this.getX(), this.getY(), text).attr(PedigreeEditorParameters.attributes.commentLabel);
+      this._commentsLabel = this._tagLabel(editor.getPaper().text(this.getX(), this.getY(), text).attr(PedigreeEditorParameters.attributes.commentLabel), 'pii-comment');
       this._commentsLabel.alignTop = true;
     } else {
       this._commentsLabel = null;
@@ -614,9 +793,16 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
   updateLifeStatusShapes: function(oldStatus) {
     var status = this.getNode().getLifeStatus();
 
+    // Clear the references as well as the drawings. Each branch below only re-draws the shapes
+    // its own status needs, so a status that needs fewer of them (e.g. "alive") would otherwise
+    // leave the accessors pointing at elements that are no longer on the canvas — and getShapes()
+    // collects whatever they return into a live set.
     this.getDeadShape()   && this.getDeadShape().remove();
     this.getUnbornShape() && this.getUnbornShape().remove();
     this.getSBLabel()     && this.getSBLabel().remove();
+    this._deadShape = null;
+    this._unbornShape = null;
+    this._stillBirthLabel = null;
 
     // save some redraws if possible
     var oldShapeType = (oldStatus == 'aborted' || oldStatus == 'miscarriage' || oldStatus == 'ectopic');
@@ -640,7 +826,13 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
       this.drawDeadShape();
       this.updateSBLabel();
     } else if (status == 'ectopic') {
-      // Ectopic pregnancy: a small triangle (loss) with an "ECT" label, no death slash.
+      // Ectopic pregnancy: a triangle with a slash through it and an "ECT" label.
+      //
+      // The slash looks like it contradicts Bennett et al. 2022 Figure 4, which draws ECT without
+      // one — but that omission was accidental and is retracted by the 2025 correction
+      // (doi:10.1002/jgc4.2020): "the symbol for ectopic pregnancy was inconsistent with the 2008
+      // guidelines; the forward slash was accidentally omitted." The corrected Figure 4 has it.
+      this.drawDeadShape();
       this.updateSBLabel();
     } else if (status == 'unborn') {
       this.drawUnbornShape();
@@ -701,7 +893,13 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
     this.getAgeLabel() && labels.push(this.getAgeLabel());
     this.getSexLabel() && labels.push(this.getSexLabel());
     this.getExternalIDLabel() && labels.push(this.getExternalIDLabel());
+    this.getGeneLabel() && labels.push(this.getGeneLabel());
+    this.getGenotypeLabel() && labels.push(this.getGenotypeLabel());
     this.getCommentsLabel() && labels.push(this.getCommentsLabel());
+    // The assisted-reproduction "D"/"G" letter is a node graphic like the others: include it so it
+    // is removed and moved with the node. Otherwise deleting (or replacing) a donor/carrier leaves
+    // the label orphaned on the canvas.
+    this.getArtRoleLabel() && labels.push(this.getArtRoleLabel());
     return labels;
   },
 

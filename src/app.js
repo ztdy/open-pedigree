@@ -1,5 +1,6 @@
 import PedigreeEditor from './script/pedigree';
 import PedigreeExport from './script/model/export';
+import PedigreeImport from './script/model/import';
 import I18n from './script/i18n';
 import { DesktopSession, createDesktopBackend, attachDirtyTracking } from './script/desktop/desktopBackend';
 
@@ -24,6 +25,13 @@ document.observe('dom:loaded',function() {
     syncDesktopLocaleThen(bridge, function() { bootstrapDesktop(bridge); });
   } else {
     editor = new PedigreeEditor();
+    // Test seam: expose the exporter/importer so the e2e harness can assert on PED/SVG/GA4GH
+    // output, and drive the parsers with hostile input, without going through the
+    // Export/ImportSelector UI. The importer is exposed raw on purpose: saveLoadEngine wraps
+    // every parse in a catch-all, which would hide the difference between "rejected the file"
+    // and "crashed on it". Harmless in production.
+    window.PedigreeExport = PedigreeExport;
+    window.PedigreeImport = PedigreeImport;
     installLanguageSwitcher();
   }
 });

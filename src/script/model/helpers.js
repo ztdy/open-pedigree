@@ -150,6 +150,133 @@ var isInt = function(n) {
   return (!isNaN(n) && parseInt(n) == parseFloat(n));
 };
 
+// Used for: Disorder/HPOTerm id sanitization, which must keep ids inside the charset that is
+// safe to embed in an HTML id while staying reversible — the id is the only stored form of a
+// free-text term, so its name is recovered by decoding it back.
+//
+// Escapes one out-of-charset character as _uXXXX_ (UTF-16 code unit, so surrogate pairs survive
+// as two escapes).
+//
+// ' ' keeps its legacy '__' mapping instead: it is the one character older versions round-tripped
+// correctly, so every id they stored for an ASCII name stays byte-identical. Escaping it would
+// mint a second id for a name already saved in an existing pedigree, and the legend would show
+// the same disorder twice.
+var ID_CHARSET = /[a-zA-Z0-9,;_\-*]/;
+
+var escapeIDChar = function(c) {
+  if (c === ' ') {
+    return '__';
+  }
+  var hex = c.charCodeAt(0).toString(16).toUpperCase();
+  while (hex.length < 4) {
+    hex = '0' + hex;
+  }
+  return '_u' + hex + '_';
+};
+
+/*
+ * The character of a _uXXXX_ escape at position i, or null if there is no escape there that
+ * escapeIDChar could actually have EMITTED as a _uXXXX_.
+ *
+ * That qualification is the whole point, and it has two parts:
+ *
+ *   - '_u0041_' is not an escape: 'A' is inside the charset, so it is never escaped at all, and
+ *     those characters only ever appear in an id as themselves.
+ *   - '_u0020_', '_u0028_', '_u0029_', and (phenotype only) '_u003A_' are not escapes either:
+ *     space, '(', ')' and ':' ARE out of charset, but they have DEDICATED escapes ('__', '_L_',
+ *     '_J_', '_C_'), so escapeIDChar never spells them as _uXXXX_. `dedicated` carries those
+ *     characters, which is why it is caller-supplied: ':' is dedicated for a phenotype ('_C_')
+ *     but NOT for a disorder, whose sanitizeID really does emit '_u003A_' for a colon.
+ *
+ * '_u9057_' by contrast is a real escape: '遗' is out of charset AND has no dedicated form, so it
+ * could only have got into an id by being escaped this way. The distinction is what lets
+ * decodeTermID read a '_' that runs into an escape.
+ */
+var emittedEscapeAt = function(id, i, dedicated) {
+  var match = /^_u([0-9A-Fa-f]{4})_/.exec(id.substring(i, i + 7));
+  if (!match) {
+    return null;
+  }
+  var character = String.fromCharCode(parseInt(match[1], 16));
+  if (ID_CHARSET.test(character) || dedicated.indexOf(character) >= 0) {
+    return null;
+  }
+  return character;
+};
+
+/*
+ * Decodes a sanitized term id in ONE left-to-right pass. `extra` maps the fixed escapes the
+ * caller uses beyond '__' — {'_L_': '(', '_J_': ')'} for a disorder, plus {'_C_': ':'} for a
+ * phenotype.
+ *
+ * This CANNOT be a sequence of global replaces, which is what it used to be. Every escape both
+ * opens and closes with '_', and '_' is also an ordinary character, so escapes collide at BOTH
+ * ends and any fixed order of replaces destroys one end or the other:
+ *
+ *   closing:  ') ' encodes to '_J_' + '__'. Replacing '__' first eats the '_J_'s closing '_', so
+ *             'Cancer (familial) type 2' came back as 'Cancer (familial_J _type 2'. Ordinary
+ *             nomenclature — 183 real HPO names and 30 real Orphanet ones hit this.
+ *   opening:  'a_[' encodes to 'a' + '_' + '_u005B_'. Taking '__' there eats the escape's
+ *             OPENING '_' and gives 'a u005B_'. The old code got this right by running _uXXXX_
+ *             first, globally — which is exactly why it got the closing case wrong.
+ *
+ * No ordering satisfies both, and neither does a plain lookahead: refusing '__' before any
+ * '_uXXXX_' fixes 'a_[' but breaks ' u0041_', where 'A' is in-charset so nothing was ever
+ * escaped there. The rule used here: a fixed escape matches only when its closing '_' does not
+ * open an escape escapeIDChar could have EMITTED (see emittedEscapeAt).
+ *
+ * This is NOT a total inverse, and cannot be — sanitizeID is non-injective, so some ids have
+ * more than one preimage and the decoder has to pick one. It resolves every ambiguity the same
+ * way, FIXED-ESCAPE / EMITTABLE-ESCAPE FIRST, because that is the reading real ontology names
+ * need: ') ' -> '_J_' + '__' must read back as ')'-then-space. The cost is that a handful of
+ * pathological free-text shapes read differently from the name that was typed:
+ *   - a literal '_' next to a fixed escape: 'a_L ' (id 'a_L__') decodes 'a(_', not 'a_L ';
+ *   - literal hex synthesizing an escape across a boundary: ' u005B ' (id '__u005B__') decodes
+ *     '_[_'. Note this one has NO literal underscore, so "no underscore => round-trips" is false.
+ * What makes this acceptable, and checked in term-ids.test.js: NONE of these shapes occurs in
+ * any of the 64,682 real ontology names — a fixed-escape char or space is never adjacent to a
+ * literal '_', and 'uXXXX' hex text never follows a space/paren/colon. The old cascade differed
+ * only in which pathological reading it picked; both are valid preimages of the same ambiguous
+ * id. See the KNOWN LIMIT note in disorder.js.
+ */
+var decodeTermID = function(id, extra) {
+  // The characters that have a dedicated escape and so are NEVER spelled as _uXXXX_: the space
+  // ('__'), plus whatever fixed escapes this caller uses ('(' , ')' , and ':' for a phenotype).
+  var dedicated = ' ';
+  for (var key in extra) {
+    if (extra.hasOwnProperty(key)) {
+      dedicated += extra[key];
+    }
+  }
+  var out = '';
+  var i = 0;
+  id = String(id);
+  while (i < id.length) {
+    var escaped = emittedEscapeAt(id, i, dedicated);
+    if (escaped !== null) {
+      out += escaped;
+      i += 7;
+      continue;
+    }
+    if (id.charAt(i) === '_') {
+      var three = id.substring(i, i + 3);
+      if (extra.hasOwnProperty(three) && emittedEscapeAt(id, i + 2, dedicated) === null) {
+        out += extra[three];
+        i += 3;
+        continue;
+      }
+      if (id.substring(i, i + 2) === '__' && emittedEscapeAt(id, i + 1, dedicated) === null) {
+        out += ' ';
+        i += 2;
+        continue;
+      }
+    }
+    out += id.charAt(i);
+    i += 1;
+  }
+  return out;
+};
+
 var toObjectWithTrue = function(array) {
   var obj = {};
   for (var i = 0; i < array.length; ++i) {
@@ -161,7 +288,16 @@ var toObjectWithTrue = function(array) {
 };
 
 var romanize = function(num) {
-  if (!+num) {
+  // Roman numerals have no zero, no sign and no fraction. `!+num` already rejected 0 and
+  // anything non-numeric, but a negative or a fraction fell through and came back as a numeral
+  // built from the digits with the sign or the '.' quietly dropped: -7 gave 'VII' and 1.5 gave
+  // 'CV'. Returning false is what the rest of the contract already promises for a value it
+  // cannot express.
+  //
+  // Nothing in src/ calls this — it is exported and currently unused (generation numbers are
+  // rendered as plain integers). So this is a contract gap closed on a helper, not a bug fixed
+  // on a live path; do not read the test for it as covering anything a user can reach.
+  if (!+num || +num < 1 || +num % 1 !== 0) {
     return false;
   }
   var digits = String(+num).split(''),
@@ -253,4 +389,4 @@ Timer.prototype = {
   },
 };
 
-export { clone2DArray, cloneObject, arrayContains, arrayIndexOf, indexOfLastMinElementInArray, filterUnique, replaceInArray, removeFirstOccurrenceByValue, isInt, toObjectWithTrue, romanize, makeFlattened2DArrayCopy, permute2DArrayInFirstDimension, Timer };
+export { clone2DArray, cloneObject, arrayContains, arrayIndexOf, indexOfLastMinElementInArray, filterUnique, replaceInArray, removeFirstOccurrenceByValue, isInt, escapeIDChar, decodeTermID, toObjectWithTrue, romanize, makeFlattened2DArrayCopy, permute2DArrayInFirstDimension, Timer };

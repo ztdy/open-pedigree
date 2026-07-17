@@ -7,6 +7,43 @@ import I18n from 'pedigree/i18n';
 var PedigreeImport = function () {
 };
 
+// An import file is the one input this app does not write itself: it arrives from a colleague,
+// a registry or an email attachment, and nothing in it is trustworthy. These two helpers keep
+// the parsers below from making assumptions about it.
+
+// Splits into non-empty lines. String.match returns NULL (not []) when nothing matches, so the
+// callers' `inputLines.length` threw a TypeError on an empty or whitespace-only file instead of
+// reporting that there was no data.
+PedigreeImport.toLines = function(inputText) {
+  var lines = String(inputText == null ? '' : inputText).match(/[^\r\n]+/g);
+  if (lines === null || lines.length === 0) {
+    throw 'Unable to import: no data';
+  }
+  // A file of nothing but spaces and tabs has no data either, and saying so beats letting the
+  // parser report whatever its first column check happens to say about a blank line. Only the
+  // all-blank case is rejected: individual lines are returned exactly as they came, because the
+  // parsers report errors by line and dropping any would renumber the rest.
+  var hasContent = false;
+  for (var i = 0; i < lines.length; i++) {
+    if (/\S/.test(lines[i])) {
+      hasContent = true;
+      break;
+    }
+  }
+  if (!hasContent) {
+    throw 'Unable to import: no data';
+  }
+  return lines;
+};
+
+// A lookup keyed by identifiers taken from the file. Prototype-free on purpose: with a plain
+// {} an id of "__proto__" is not an ordinary key — `map['__proto__'] = 5` is silently dropped
+// and reading it back yields Object.prototype, which then flows on as if it were a node id.
+// With a null prototype every id is just a key, and hasOwnProperty questions have one answer.
+PedigreeImport.newIdMap = function() {
+  return Object.create(null);
+};
+
 PedigreeImport.prototype = {
 };
 
@@ -25,7 +62,7 @@ PedigreeImport.initFromPhenotipsInternal = function(inputG) {
 
   var newG = new BaseGraph();
 
-  var nameToId = {};
+  var nameToId = PedigreeImport.newIdMap();
 
   var relationshipHasExplicitChHub = {};
 
@@ -185,10 +222,7 @@ PedigreeImport.initFromPhenotipsInternal = function(inputG) {
  * ===============================================================================================
  */
 PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEvaluated, saveIDAsExternalID, affectedCodeOne, disorderNames) {
-  var inputLines = inputText.match(/[^\r\n]+/g);
-  if (inputLines.length == 0) {
-    throw 'Unable to import: no data';
-  }
+  var inputLines = PedigreeImport.toLines(inputText);
 
   // autodetect if data is in pre-makeped or post-makeped format
   var postMakeped = false;
@@ -200,7 +234,7 @@ PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEval
 
   var newG = new BaseGraph();
 
-  var nameToId = {};
+  var nameToId = PedigreeImport.newIdMap();
 
   var phenotypeValues = {};  // set of all posible valuesin the phenotype column
 
@@ -231,7 +265,7 @@ PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEval
     }
 
     var pedID = parts[1];
-    if (nameToId.hasOwnProperty(pedID)) {
+    if (pedID in nameToId) {
       throw 'Multiple persons with the same ID [' + pedID + ']';
     }
 
@@ -339,7 +373,11 @@ PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEval
     if (fatherID == 0) {
       fatherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'M', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
+      var declaredFather = fatherID;
       fatherID = nameToId[fatherID];
+      if (fatherID === undefined) {
+        throw 'Unable to import pedigree: [id: ' + thisPersonName + '] declares a father [id: ' + declaredFather + '] who is not listed in the file';
+      }
       if (newG.properties[fatherID].gender == 'F') {
         throw 'Unable to import pedigree: a person declared as female [id: ' + fatherID + '] is also declared as being a father for [id: '+thisPersonName+']';
       }
@@ -347,7 +385,11 @@ PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEval
     if (motherID == 0) {
       motherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'F', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
+      var declaredMother = motherID;
       motherID = nameToId[motherID];
+      if (motherID === undefined) {
+        throw 'Unable to import pedigree: [id: ' + thisPersonName + '] declares a mother [id: ' + declaredMother + '] who is not listed in the file';
+      }
       if (newG.properties[motherID].gender == 'M') {
         throw 'Unable to import pedigree: a person declared as male [id: ' + motherID + '] is also declared as being a mother for [id: '+thisPersonName+']';
       }
@@ -406,7 +448,7 @@ PedigreeImport.initFromPED = function(inputText, acceptOtherPhenotypes, markEval
  * ===============================================================================================
  */
 PedigreeImport.initFromBOADICEA = function(inputText, saveIDAsExternalID) {
-  var inputLines = inputText.match(/[^\r\n]+/g);
+  var inputLines = PedigreeImport.toLines(inputText);
 
   if (inputLines.length <= 2) {
     throw 'Unable to import: no data';
@@ -420,7 +462,7 @@ PedigreeImport.initFromBOADICEA = function(inputText, saveIDAsExternalID) {
 
   var newG = new BaseGraph();
 
-  var nameToId = {};
+  var nameToId = PedigreeImport.newIdMap();
 
   var nextID = 1;
 
@@ -446,14 +488,20 @@ PedigreeImport.initFromBOADICEA = function(inputText, saveIDAsExternalID) {
     }
 
     var extID = parts[3];
-    if (nameToId.hasOwnProperty(extID)) {
+    if (extID in nameToId) {
       throw 'Multiple persons with the same ID [' + extID + ']';
     }
 
-    var genderValue = parts[6];
-    var gender = 'M';
+    // The sex column. It used to default to 'M' and only look for an exact 'F', so every value
+    // the parser did not recognise — an unknown sex, a lowercase 'f', a column another tool had
+    // left as 0 — was imported as male. Recording a sex the file never stated is not a
+    // formatting nit: it is the column the analysis keys on. Anything not M/F is unknown.
+    var genderValue = String(parts[6] || '').toUpperCase();
+    var gender = 'U';
     if (genderValue == 'F') {
       gender = 'F';
+    } else if (genderValue == 'M') {
+      gender = 'M';
     }
     var name = parts[1];
     if (isInt(name)) {
@@ -554,7 +602,11 @@ PedigreeImport.initFromBOADICEA = function(inputText, saveIDAsExternalID) {
     if (fatherID == 0) {
       fatherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'M', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
+      var declaredFather = fatherID;
       fatherID = nameToId[fatherID];
+      if (fatherID === undefined) {
+        throw 'Unable to import pedigree: [id: ' + extID + '] declares a father [id: ' + declaredFather + '] who is not listed in the file';
+      }
       if (newG.properties[fatherID].gender == 'F') {
         throw 'Unable to import pedigree: a person declared as female [id: ' + fatherID + '] is also declared as being a father for [id: '+extID+']';
       }
@@ -562,7 +614,11 @@ PedigreeImport.initFromBOADICEA = function(inputText, saveIDAsExternalID) {
     if (motherID == 0) {
       motherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'F', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
+      var declaredMother = motherID;
       motherID = nameToId[motherID];
+      if (motherID === undefined) {
+        throw 'Unable to import pedigree: [id: ' + extID + '] declares a mother [id: ' + declaredMother + '] who is not listed in the file';
+      }
       if (newG.properties[motherID].gender == 'M') {
         throw 'Unable to import pedigree: a person declared as male [id: ' + motherID + '] is also declared as being a mother for [id: '+extID+']';
       }
@@ -631,7 +687,7 @@ PedigreeImport.validateBaseGraph = function(newG) {
  * ===============================================================================================
  */
 PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExternalID) {
-  var inputLines = inputText.match(/[^\r\n]+/g);
+  var inputLines = PedigreeImport.toLines(inputText);
   if (inputLines.length == 0) {
     throw 'Unable to import: no data';
   }
@@ -697,15 +753,31 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
     var currentObject = [];
 
     for (var i = 0; i < inputLines.length; i++) {
-      var nextLine = inputLines[i].replace(/[^a-zA-Z0-9.\@\/\-\s*]/g, ' ').replace(/^\s+|\s+$/g, ''); // sanitize + trim
-
-      var words = inputLines[i].split(/\s+/);
+      // NB: unlike the PED and BOADICEA parsers this one does NOT sanitize the line. A sanitize
+      // was written here but its result was assigned to a variable nobody read, so it has never
+      // run; switching it on now would strip characters (underscores above all, as in the _UID
+      // custom tags GEDCOM writers emit) out of files that import correctly today. The values
+      // are escaped at the point they are written into the DOM instead.
+      // Trimmed, not rejected: GEDCOM 5.5.1 has a reader ignore surrounding whitespace, and
+      // splitting on /\s+/ without trimming puts an empty field at each end — a leading one made
+      // the level parse as NaN ("not GEDCOM"), and a trailing one got joined into the value, so
+      // a file with trailing spaces read "0 @I1@ INDI " as the tag "INDI " and matched nothing,
+      // leaving "no individuals are defined". (A trim was written here originally but its result
+      // was assigned to a variable nobody read, so it never ran.)
+      var words = inputLines[i].replace(/^\s+|\s+$/g, '').split(/\s+/);
       var parts = words.splice(0,2);
       parts.push(words.join(' '));
 
       // now parts[0] = level, parts[1] = record type, parts[2] = value, if any
 
       var level = parseInt(parts[0]);
+
+      // Every GEDCOM line starts with a non-negative level number followed by a tag. A file that
+      // does not (a PED file picked in the wrong dialog, an HTML error page, binary noise) has to
+      // be reported as not-GEDCOM here — downstream this line is indexed into blind.
+      if (isNaN(level) || level < 0 || !parts[1]) {
+        throw 'Unable to import GEDCOM: expected a level number and a tag in line: [' + inputLines[i] + ']';
+      }
 
       currentObject.splice(level);
 
@@ -724,8 +796,25 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
           currentObject[0] = {};
         }
       } else {
-        if (currentObject.length < level - 1) {
+        // A line at level N belongs to the record at level N-1, so that record must already
+        // exist. The old test (`length < level - 1`) was off by one and could never fire for
+        // level 1, so a file whose first line was a level-1 line dereferenced currentObject[0]
+        // before anything had been pushed into it.
+        if (currentObject.length < level) {
           throw 'Unable to import GEDCOM: a multi-level jump detected in line: [' + inputLines[i] + ']';
+        }
+
+        // CONT and CONC continue the value of the line above them: CONC joins it straight on,
+        // CONT starts a new line. They are folded into that value HERE, as they are read, because
+        // as child records the two tags land in two separate arrays and the order between them is
+        // lost — and the order between them is the entire content of a wrapped note. Reading only
+        // the CONT array (which is what the consumer used to do) silently dropped every CONC, so
+        // a long note came back with pieces missing and nothing said so.
+        if (parts[1] == 'CONT' || parts[1] == 'CONC') {
+          var continued = currentObject[level - 1];
+          var sofar = continued.hasOwnProperty('value') ? continued['value'] : '';
+          continued['value'] = sofar + (parts[1] == 'CONT' ? '\n' : '') + parts[2];
+          continue;   // CONT/CONC have no substructure of their own
         }
 
         if (!currentObject[level-1].hasOwnProperty(parts[1])) {
@@ -853,13 +942,11 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
           if (!properties.hasOwnProperty('comments')) {
             properties['comments'] = '';
           }
+          // The continuation lines are already folded into this value, in the order the file had
+          // them (see convertToObject). This used to append the CONT array separately, which put
+          // every CONT line after every CONC line regardless of the file, and dropped the CONC
+          // lines entirely.
           properties['comments'] += getFirstValue(nextPerson[property]) + '\n';
-          if (nextPerson[property][0].hasOwnProperty('CONT')) {
-            var more = nextPerson[property][0]['CONT'];
-            for (var cc = 0; cc < more.length; cc++) {
-              properties['comments'] += more[cc].value + '\n';
-            }
-          }
         } else if (property == 'NAME') {
           var nameParts = getFirstValue(nextPerson[property]).split('/');
           var firstName = nameParts[0].replace(/^\s+|\s+$/g, '');
@@ -939,6 +1026,9 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
       var fatherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'M', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
       var fatherID = externalIDToID[fatherLink];
+      if (fatherID === undefined) {
+        throw 'Unable to import pedigree: a family declares a husband (' + fatherLink + ') who is not defined as an individual in the file';
+      }
       if (newG.properties[fatherID].gender == 'F') {
         throw 'Unable to import pedigree: a person declared as female is also declared as being a father ('+fatherLink+')';
       }
@@ -947,6 +1037,9 @@ PedigreeImport.initFromGEDCOM = function(inputText, markEvaluated, saveIDAsExter
       var motherID = newG._addVertex( null, BaseGraph.TYPE.PERSON, {'gender': 'F', 'comments': 'unknown'}, newG.defaultPersonNodeWidth );
     } else {
       var motherID = externalIDToID[motherLink];
+      if (motherID === undefined) {
+        throw 'Unable to import pedigree: a family declares a wife (' + motherLink + ') who is not defined as an individual in the file';
+      }
       if (newG.properties[motherID].gender == 'M') {
         throw 'Unable to import pedigree: a person declared as male is also declared as being a mother ('+motherLink+')';
       }
@@ -1014,6 +1107,7 @@ PedigreeImport.JSONToInternalPropertyMapping = {
   'disorders':       'disorders',
   'hpoterms':        'hpoTerms',
   'candidategenes':  'candidateGenes',
+  'genotype':        'genotype',
   'ethnicities':     'ethnicities',
   'carrierstatus':   'carrierStatus',
   'externalid':      'externalID',

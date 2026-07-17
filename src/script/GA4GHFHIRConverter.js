@@ -40,18 +40,48 @@ GA4GHFHIRConverter.initFromFHIR = function (inputText) {
     throw 'Unable to import pedigree: input is not a valid JSON string '
     + err;
   }
+  // Valid JSON is not the same thing as a resource: "null", "42" and "[]" all parse.
+  if (inputResource === null || typeof inputResource !== 'object' || Array.isArray(inputResource)) {
+    throw 'Unable to import pedigree: input is not a FHIR resource';
+  }
+
+  // meta.profile is a list of canonical URLs. Two things a file is allowed to do here that a
+  // plain `.includes(url)` on the raw value gets wrong:
+  //   - it is a repeating element, so FHIR JSON requires an array even for one value; anything
+  //     else is malformed, and `{"profile":{}}` has no .includes at all.
+  //   - a canonical MAY carry a version after a '|' ("...|1.0.0"), which is still our profile.
+  const PEDIGREE_PROFILE = 'http://purl.org/ga4gh/pedigree-fhir-ig/StructureDefinition/Pedigree';
+  const hasPedigreeProfile = function (resource) {
+    if (!resource || !resource.meta || !Array.isArray(resource.meta.profile)) {
+      return false;
+    }
+    return resource.meta.profile.some(function (p) {
+      return p === PEDIGREE_PROFILE || (typeof p === 'string' && p.indexOf(PEDIGREE_PROFILE + '|') === 0);
+    });
+  };
+
   let compositionResource = undefined;
   let containedResources = undefined;
 
-  if (inputResource.resourceType === 'Composition' && inputResource.meta  && inputResource.meta.profile
-    && inputResource.meta.profile.includes('http://purl.org/ga4gh/pedigree-fhir-ig/StructureDefinition/Pedigree')) {
+  if (inputResource.resourceType === 'Composition' && hasPedigreeProfile(inputResource)) {
     compositionResource = inputResource;
     containedResources = inputResource.contained;
   } else if (inputResource.resourceType === 'Bundle' && inputResource.type === 'document' ) {
-    compositionResource = inputResource.entry[0].resource;
-    if (compositionResource && compositionResource.resourceType === 'Composition' && compositionResource.meta  && compositionResource.meta.profile
-      && compositionResource.meta.profile.includes('http://purl.org/ga4gh/pedigree-fhir-ig/StructureDefinition/Pedigree')){
-      containedResources = inputResource.entry.map(entry => entry.resource);
+    // A document Bundle is defined as having the Composition first, but a file can claim to be
+    // a document and carry no entries at all.
+    compositionResource = (inputResource.entry && inputResource.entry[0])
+      ? inputResource.entry[0].resource : null;
+    if (compositionResource && compositionResource.resourceType === 'Composition'
+      && hasPedigreeProfile(compositionResource)){
+      // Every entry in a document Bundle SHALL carry a resource (an entry without one is legal
+      // in other Bundle types, not this one). Skipping the broken entry would import a pedigree
+      // that is quietly missing the people it could not read — say so instead.
+      containedResources = inputResource.entry.map(function (entry) {
+        if (!entry || !entry.resource) {
+          throw 'Unable to import pedigree: the document contains an entry with no resource';
+        }
+        return entry.resource;
+      });
     } else {
       compositionResource = null;
     }
@@ -124,8 +154,95 @@ GA4GHFHIRConverter.initFromFHIR = function (inputText) {
     this.extractDataFromObservation(observationResource, nodeDataLookup, containedResourcesLookup, twinTracker);
   }
 
+  // Resolve a Composition entry/subject reference back to its imported node. The reference may
+  // carry a 'Patient/' or '#' prefix the lookup keys don't, or use the other of the '#'/'urn:uuid:'
+  // forms, so fall back to matching on the bare id.
+  const resolveNodeByRef = function (refStr) {
+    if (!refStr) {
+      return null; 
+    }
+    if (nodeDataLookup[refStr]) {
+      return nodeDataLookup[refStr]; 
+    }
+    let bareId = refStr;
+    if (bareId.indexOf('Patient/') === 0) {
+      bareId = bareId.substring(8); 
+    }
+    if (bareId.charAt(0) === '#') {
+      bareId = bareId.substring(1); 
+    }
+    let node = nodeDataLookup['#' + bareId] || nodeDataLookup['urn:uuid:' + bareId];
+    if (!node) {
+      for (const k in nodeDataLookup) {
+        if (nodeDataLookup[k] && String(nodeDataLookup[k].properties.id) === String(bareId)) {
+          node = nodeDataLookup[k];
+          break;
+        }
+      }
+    }
+    return node;
+  };
 
+  // True when the section carries the given (system, code) in ANY of its codings — a section may
+  // list several codings, and matching only coding[0] (or ignoring the system) would both miss a
+  // correct code in a later slot and accept an unrelated terminology's same-named code.
+  const sectionHasCode = function (sec, system, code) {
+    const codings = sec && sec.code && sec.code.coding;
+    if (!Array.isArray(codings)) {
+      return false; 
+    }
+    return codings.some(function (c) {
+      return c && c.system === system && c.code === code; 
+    });
+  };
 
+  // The clinical proband is authoritatively named by the GA4GH "proband" section; the consultand(s)
+  // — there may be more than one — ride in open-pedigree's own "consultand" section. Neither used to
+  // be read back, so an export/re-import lost the consultand marks and let ensureSingleProband()
+  // silently move the proband to node 0. Resolve both here, before the vertices are built.
+  let probandRefStr = null;
+  let hasProbandSection = false;
+  if (Array.isArray(compositionResource.section)) {
+    for (const sec of compositionResource.section) {
+      if (sectionHasCode(sec, this.GA4GH_SECTION_SYSTEM, 'proband')) {
+        // A proband section is present. Track that even if its entry is empty/malformed, so we do
+        // NOT then fall back to Composition.subject (which may be a Group): the author already
+        // committed to naming the proband here, and a bad section should not silently mark a
+        // whole-family Group member instead.
+        hasProbandSection = true;
+        if (!probandRefStr && Array.isArray(sec.entry) && sec.entry[0]) {
+          probandRefStr = sec.entry[0].reference;
+        }
+      }
+      if (sectionHasCode(sec, this.OPEN_PEDIGREE_SECTION_SYSTEM, 'consultand') && Array.isArray(sec.entry)) {
+        for (const ent of sec.entry) {
+          const cNode = resolveNodeByRef(ent && ent.reference);
+          if (cNode) {
+            cNode.properties.consultand = true; 
+          }
+        }
+      }
+    }
+  }
+  // Only fall back to Composition.subject when there was NO proband section at all: subject MAY
+  // legitimately be a Group (the whole family), so honour it only when it actually resolves to a
+  // contained Patient.
+  if (!hasProbandSection && !probandRefStr && compositionResource.subject && compositionResource.subject.reference) {
+    const subjRef = compositionResource.subject.reference;
+    let subjResource = containedResourcesLookup[subjRef];
+    if (!subjResource && subjRef.indexOf('Patient/') === 0) {
+      subjResource = containedResourcesLookup[this.getReference(subjRef.substring(8))];
+    }
+    if (subjResource && subjResource.resourceType === 'Patient') {
+      probandRefStr = subjRef;
+    }
+  }
+  if (probandRefStr) {
+    const probandNode = resolveNodeByRef(probandRefStr);
+    if (probandNode) {
+      probandNode.properties.proband = true; 
+    }
+  }
 
   // first pass: add all vertices and assign vertex IDs
   for (const nextPerson of nodeData){
@@ -373,10 +490,27 @@ GA4GHFHIRConverter.extractDataFromFMH = function (familyHistoryResource,
     }
     firstNodeData.father = secondNodeData.nodeId;
   } else if (rel === 'KIN:003' || rel === 'KIN:022'){
-    // NPRN or ADOPTPRN
+    // NPRN or ADOPTPRN. KIN:022 (adoptive parent) links the same way as a natural parent, but the
+    // child is adopted-in — record that on the child so the bracket notation survives a round-trip.
+    if (rel === 'KIN:022'){
+      firstNodeData.properties.isAdopted = true;
+    }
     if (secondNodeData.gender === 'M' && !('father' in firstNodeData)){
       firstNodeData.father = secondNodeData.nodeId;
     } else if (secondNodeData.gender === 'F' && !('mother' in firstNodeData)){
+      firstNodeData.mother = secondNodeData.nodeId;
+    } else if (!('father' in firstNodeData)){
+      firstNodeData.father = secondNodeData.nodeId;
+    } else if (!('mother' in firstNodeData)){
+      firstNodeData.mother = secondNodeData.nodeId;
+    }
+  } else if (rel === 'KIN:004' || rel === 'KIN:038' || rel === 'KIN:005'){
+    // A sperm donor / ovum donor / gestational carrier is still a parent in the drawing — the
+    // role is what NSGC puts inside their symbol, so record both.
+    secondNodeData.properties.artRole = (rel === 'KIN:005') ? 'G' : 'D';
+    if (rel === 'KIN:004' && !('father' in firstNodeData)){
+      firstNodeData.father = secondNodeData.nodeId;
+    } else if ((rel === 'KIN:038' || rel === 'KIN:005') && !('mother' in firstNodeData)){
       firstNodeData.mother = secondNodeData.nodeId;
     } else if (!('father' in firstNodeData)){
       firstNodeData.father = secondNodeData.nodeId;
@@ -402,9 +536,14 @@ GA4GHFHIRConverter.extractDataFromFMH = function (familyHistoryResource,
       secondNodeData.partnerType = [{consangr: isConsang, broken: isBroken}];
     }
   } else if (rel === 'KIN:009' || rel === 'KIN:010' || rel === 'KIN:011'){
-    // TWIN or Monozygotic twin or Polyzygotic twin
+    // TWIN (zygosity unspecified) or Monozygotic (KIN:010) or Dizygotic/polyzygotic (KIN:011) twin.
     firstNodeData.properties.monozygotic = (rel === 'KIN:010');
     secondNodeData.properties.monozygotic = (rel === 'KIN:010');
+    if (rel === 'KIN:009'){
+      // Generic twin: zygosity is explicitly unknown, not "known dizygotic".
+      firstNodeData.properties.twinZygosityUnknown = true;
+      secondNodeData.properties.twinZygosityUnknown = true;
+    }
     let firstNodeTwinGroup = twinTracker.lookup[firstNodeData.nodeId];
     let secondNodeTwinGroup = twinTracker.lookup[secondNodeData.nodeId];
 
@@ -789,7 +928,7 @@ GA4GHFHIRConverter.exportAsFHIR = function (pedigree, privacySetting, knownFhirP
     'code': {
       'coding': [
         {
-          'system': 'http://purl.org/ga4gh/pedigree-fhir-ig/CodeSystem/SectionType',
+          'system': this.GA4GH_SECTION_SYSTEM,
           'code': 'proband'
         }
       ]
@@ -830,6 +969,31 @@ GA4GHFHIRConverter.exportAsFHIR = function (pedigree, privacySetting, knownFhirP
     },
     'entry': []
   };
+
+  // Consultand(s): whoever is seeking counseling — independent of the proband, and there may be
+  // more than one (a couple attending together). GA4GH's SectionType has no consultand code, so we
+  // carry them in our own section; a standards-only reader simply ignores the unknown section.
+  let consultandSection = {
+    'title': 'Consultand',
+    'code': {
+      'coding': [
+        {
+          'system': this.OPEN_PEDIGREE_SECTION_SYSTEM,
+          'code': 'consultand'
+        }
+      ]
+    },
+    'entry': []
+  };
+  for (let ci in pedigreeIndividuals) {
+    let ciProps = pedigree.GG.properties[ci];
+    if (ciProps && ciProps.consultand) {
+      consultandSection.entry.push({
+        'type': 'Patient',
+        'reference': this.patRefAsRef(nodeIndexToRef[ci])
+      });
+    }
+  }
 
   let author = {
     'resourceType': 'Organization',
@@ -930,6 +1094,10 @@ GA4GHFHIRConverter.exportAsFHIR = function (pedigree, privacySetting, knownFhirP
       relationshipSection,
       otherSection]
   };
+
+  if (consultandSection.entry.length > 0) {
+    composition.section.push(consultandSection);
+  }
 
 
   if (pedigreeImage) {
@@ -1044,6 +1212,9 @@ GA4GHFHIRConverter.relationshipMap = {
   'NMTH':      'KIN:027',
   'NFTH':      'KIN:028',
   'NPRN':      'KIN:003',
+  'OVUMDNR':   'KIN:038',
+  'SPRMDNR':   'KIN:004',
+  'GESTCARR':  'KIN:005',
   'ADOPTMTH':  'KIN:022',
   'ADOPTFTH':  'KIN:022',
   'ADOPTPRN':  'KIN:022',
@@ -1054,9 +1225,18 @@ GA4GHFHIRConverter.relationshipMap = {
   'TWIN':      'KIN:009',
   'TWINSIS':   'KIN:010',
   'TWINBRO':   'KIN:010',
+  'MZTWIN':    'KIN:010',
   'FTWINSIS':  'KIN:011',
   'FTWINBRO':  'KIN:011',
+  'DZTWIN':    'KIN:011',
 };
+
+// The CodeSystem that defines GA4GH's Composition section codes (e.g. 'proband').
+GA4GHFHIRConverter.GA4GH_SECTION_SYSTEM = 'http://purl.org/ga4gh/pedigree-fhir-ig/CodeSystem/SectionType';
+// open-pedigree's own CodeSystem for section codes GA4GH's SectionType does not define (currently
+// just 'consultand'). Coding.system names the system that defines the code, so a custom code must
+// be published under our own URI, not GA4GH's. Export and import must use the same value.
+GA4GHFHIRConverter.OPEN_PEDIGREE_SECTION_SYSTEM = 'http://open-pedigree.org/fhir/CodeSystem/SectionType';
 
 GA4GHFHIRConverter.processTreeNode = function (index, pedigree, privacySetting, knownFhirPatienReference,
   pedigreeIndividuals, pedigreeRelationship, condtions, observations, nodeIndexToRef) {
@@ -1075,7 +1255,7 @@ GA4GHFHIRConverter.processTreeNode = function (index, pedigree, privacySetting, 
 
   this.addConditions(nodeProperties, ref, condtions);
 
-  this.addObservations(nodeProperties, ref, observations);
+  this.addObservations(nodeProperties, ref, observations, privacySetting);
 
   let relationshipsToBuild = {};
 
@@ -1100,15 +1280,33 @@ GA4GHFHIRConverter.processTreeNode = function (index, pedigree, privacySetting, 
       }
     }
   }
+  // An assisted-reproduction role recorded on a parent (NSGC "D"/"G") makes their tie to this
+  // child more specific than "mother"/"father": KIN has codes for exactly these. Returns null
+  // when the parent has no role, leaving the plain parent code in place.
+  //
+  // A surrogate (donates the ovum AND carries) is not distinguishable here: NSGC draws them as a
+  // plain "D" and conveys the carrying by placing the pregnancy below them, which is layout, not
+  // model — so they export as an ovum donor (KIN:038), never KIN:006 isSurrogateOvumDonor.
+  let artRelationship = function (parentIndex) {
+    const role = pedigree.GG.properties[parentIndex]['artRole'];
+    if (role === 'G') {
+      return 'GESTCARR';
+    }
+    if (role === 'D') {
+      return (pedigree.GG.getGender(parentIndex) === 'M') ? 'SPRMDNR' : 'OVUMDNR';
+    }
+    return null;
+  };
+
   if (mother > 0) {
-    relationshipsToBuild[mother] = (isAdopted) ? 'ADOPTMTH' : 'NMTH';
+    relationshipsToBuild[mother] = artRelationship(mother) || ((isAdopted) ? 'ADOPTMTH' : 'NMTH');
   }
   if (father > 0) {
-    relationshipsToBuild[father] = (isAdopted) ? 'ADOPTFTH' : 'NFTH';
+    relationshipsToBuild[father] = artRelationship(father) || ((isAdopted) ? 'ADOPTFTH' : 'NFTH');
   }
   for (let i = 0; i < parents.length; i++) {
     if (!relationshipsToBuild[parents[i]]) {
-      relationshipsToBuild[parents[i]] = (isAdopted) ? 'ADOPTPRN' : 'NPRN';
+      relationshipsToBuild[parents[i]] = artRelationship(parents[i]) || ((isAdopted) ? 'ADOPTPRN' : 'NPRN');
     }
   }
 
@@ -1157,11 +1355,19 @@ GA4GHFHIRConverter.processTreeNode = function (index, pedigree, privacySetting, 
         if (!pedigreeIndividuals[siblingId]) {
           let gender = pedigree.GG.getGender(siblingId);
           let monozygotic = pedigree.GG.properties[siblingId]['monozygotic'] === true;
-          let rel = 'TWIN';
-          if (gender === 'F') {
-            rel = (monozygotic) ? 'TWINSIS' : 'FTWINSIS';
-          } else if (gender === 'M') {
-            rel = (monozygotic) ? 'TWINBRO' : 'FTWINBRO';
+          let zygosityUnknown = pedigree.GG.properties[siblingId]['twinZygosityUnknown'] === true;
+          // Pick the KIN code by zygosity first, then sex. Monozygotic wins over "unknown" to
+          // match the renderer (partnershipVisuals draws the mono line before the "?"). Generic
+          // TWIN (KIN:009) is reserved for genuinely unknown zygosity, so a round-trip never
+          // invents a dizygotic claim. When the twin's sex is unknown, fall back to the genderless
+          // MZTWIN/DZTWIN labels so known zygosity is not silently downgraded to "unknown".
+          let rel;
+          if (monozygotic) {
+            rel = (gender === 'F') ? 'TWINSIS' : (gender === 'M') ? 'TWINBRO' : 'MZTWIN';
+          } else if (zygosityUnknown) {
+            rel = 'TWIN';
+          } else {
+            rel = (gender === 'F') ? 'FTWINSIS' : (gender === 'M') ? 'FTWINBRO' : 'DZTWIN';
           }
           relationshipsToBuild[siblingId] = rel;
         }
@@ -1178,6 +1384,9 @@ GA4GHFHIRConverter.processTreeNode = function (index, pedigree, privacySetting, 
 };
 
 GA4GHFHIRConverter.getReference = function(id) {
+  // A FHIR id is a string, but an imported file is not obliged to honour that ({"id": 7} is
+  // valid JSON), and this runs over ids taken straight out of one.
+  id = String(id);
   if (id.startsWith('urn:uuid:')){
     return id;
   }
@@ -1345,9 +1554,12 @@ GA4GHFHIRConverter.addConditions = function (nodeProperties, ref, condtions) {
   let fhirTerminologyHelper = editor.getFhirTerminologyHelper();
   if (nodeProperties['disorders']) {
     let disorders = nodeProperties['disorders'];
-    let disorderLegend = editor.getDisorderLegend();
     for (let i = 0; i < disorders.length; i++) {
-      let disorderTerm = disorderLegend.getTerm(disorders[i]);
+      // NB: there used to be a `disorderLegend.getTerm(disorders[i])` here whose result was
+      // never used. getTerm only exists on HPOLegend — DisorderLegend has getDisorder — so the
+      // line threw for anyone carrying a disorder, i.e. it broke GA4GH export for essentially
+      // every real pedigree, silently (exportSelector does not catch). Upstream since cb207f6
+      // (2022). It went unnoticed because no GA4GH test ever gave a person a disorder.
       let fhirCondition = {
         'resourceType': 'Condition',
         'id': generateUUID(),
@@ -1363,7 +1575,7 @@ GA4GHFHIRConverter.addConditions = function (nodeProperties, ref, condtions) {
   condtions[ref] = conditionsForRef;
 };
 
-GA4GHFHIRConverter.addObservations = function (nodeProperties, ref, observations) {
+GA4GHFHIRConverter.addObservations = function (nodeProperties, ref, observations, privacySetting) {
   let observationsForRef = [];
   let fhirTerminologyHelper = editor.getFhirTerminologyHelper();
   const phenotypePrefix = 'phenotype: ';
@@ -1489,8 +1701,11 @@ GA4GHFHIRConverter.addObservations = function (nodeProperties, ref, observations
       observationsForRef.push(fhirObservation);
     }
   }
-  // add comments as an observation
-  if (nodeProperties['comments']) {
+  // Add comments as an observation — but not under the privacy setting whose own label is
+  // "Remove personal information and free-form comments". This is free text a clinician typed
+  // about a family; it is exactly what that option promises to strip, and it used to be
+  // exported regardless of the setting.
+  if (nodeProperties['comments'] && privacySetting !== 'minimal') {
     let fhirObservation = {
       'resourceType': 'Observation',
       'id': generateUUID(),

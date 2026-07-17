@@ -60,14 +60,16 @@ function registerOfflineDataProtocol() {
   protocol.handle('opdata', async (request) => {
     try {
       const u = new URL(request.url);
-      const kind = u.hostname; // 'genes' | 'hpo'
+      const kind = u.hostname; // 'genes' | 'hpo' | 'disorders' | 'fonts'
       const q = u.searchParams.get('q') || '';
       let payload;
       if (kind === 'genes') payload = await offlineData.searchGenes(q);
       else if (kind === 'hpo') payload = await offlineData.searchHpo(q);
-      // No OMIM database is bundled (licensing); serve an empty result so the disorders
-      // picker degrades to free-text offline instead of firing failing XHRs + alert() spam.
-      else if (kind === 'disorders') payload = { rows: [] };
+      // Orphanet rare-disease nomenclature (CC BY 4.0, see data/NOTICE). OMIM stays unbundled:
+      // it is copyrighted and its terms do not allow redistribution inside the app.
+      else if (kind === 'disorders') {
+        payload = await offlineData.searchDisorders(q, u.searchParams.get('lang') || 'en');
+      }
       // Serve the bundled CJK font so PDF export can embed Chinese glyphs offline.
       else if (kind === 'fonts') {
         const map = { sc: 'NotoSansSC-Regular.otf' };
@@ -454,9 +456,11 @@ if (require.main === module) {
       // Resolve where the library lives (first-run picker / saved choice / portable default)
       // BEFORE constructing the store, which creates the directory.
       let resolvedDir = null;
+      let resolvedSource = null;
       try {
         const resolved = await resolveLibraryDir({ app, dialog });
         resolvedDir = resolved.dir;
+        resolvedSource = resolved.source;
       } catch (e) {
         console.error('library location resolve failed', e);
       }
@@ -487,6 +491,16 @@ if (require.main === module) {
           t('Could not create or write to any data folder, so the app cannot start.\n\nCheck folder permissions or set OPEN_PEDIGREE_LIBRARY to a writable path.'));
         app.quit();
         return;
+      }
+      // First-run: drop the bundled example pedigrees into the library. Skipped when the location
+      // came from OPEN_PEDIGREE_LIBRARY (dev/tests/power-users, kept hermetic like the env override
+      // itself). Idempotent and best-effort — never blocks startup.
+      if (resolvedSource !== 'env') {
+        try {
+          const { seedExamples } = require('./seedExamples');
+          const r = seedExamples(LIBRARY_DIR);
+          if (r && r.seeded) { console.log('[examples] seeded ' + r.seeded + ' example pedigree(s)'); }
+        } catch (e) { console.error('[examples] seeding failed', e); }
       }
       registerOfflineDataProtocol();
       registerIpc();

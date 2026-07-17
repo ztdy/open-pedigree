@@ -1,0 +1,212 @@
+{
+  "fileFormatVersion": 1,
+  "documentId": "8467a519-1978-4e2d-863c-4a40e3ea2550",
+  "title": "唐氏综合征(21三体) · Down syndrome (trisomy 21, sporadic)",
+  "project": "示例家系 · Example pedigrees",
+  "isExample": true,
+  "createdAt": "2026-01-01T11:53:00.000Z",
+  "updatedAt": "2026-01-01T11:53:00.000Z",
+  "localizedTitle": {
+    "zh": "唐氏综合征(21三体)",
+    "en": "Down syndrome (trisomy 21, sporadic)"
+  },
+  "localizedProject": {
+    "zh": "示例家系",
+    "en": "Example pedigrees"
+  },
+  "description": "小型散发/染色体病范例：多为新发不分离、再发风险低、随母亲年龄升高。展示染色体病与一次自然流产。无纵向遗传模式，仅一名患儿。先证者为唐氏患儿。\n来源/Source: Standard cytogenetics (free trisomy 21). [ex:8467a519]",
+  "localizedDescription": {
+    "zh": "小型散发/染色体病范例：多为新发不分离、再发风险低、随母亲年龄升高。展示染色体病与一次自然流产。无纵向遗传模式，仅一名患儿。先证者为唐氏患儿。\n来源/Source: Standard cytogenetics (free trisomy 21). [ex:8467a519]",
+    "en": "A small sporadic/chromosomal example: usually de novo nondisjunction, low recurrence risk that rises with maternal age. Shows a chromosomal disorder plus one spontaneous miscarriage. No vertical inheritance pattern, a single affected child. The proband is the child with Down syndrome.\n来源/Source: Standard cytogenetics (free trisomy 21). [ex:8467a519]"
+  },
+  "graph": {
+    "GG": [
+      {
+        "id": 0,
+        "prop": {
+          "gender": "M",
+          "fName": "GF"
+        },
+        "outedges": [
+          {
+            "to": 8
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "prop": {
+          "gender": "F",
+          "fName": "GM"
+        },
+        "outedges": [
+          {
+            "to": 8
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "prop": {
+          "gender": "M",
+          "fName": "Father"
+        },
+        "outedges": [
+          {
+            "to": 10
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "prop": {
+          "gender": "F",
+          "fName": "Mother"
+        },
+        "outedges": [
+          {
+            "to": 10
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "prop": {
+          "gender": "F",
+          "fName": "Aunt"
+        }
+      },
+      {
+        "id": 5,
+        "prop": {
+          "gender": "M",
+          "fName": "Child1"
+        }
+      },
+      {
+        "id": 6,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Down__syndrome"
+          ],
+          "carrierStatus": "affected",
+          "proband": true,
+          "fName": "Child2"
+        }
+      },
+      {
+        "id": 7,
+        "prop": {
+          "gender": "U",
+          "lifeStatus": "miscarriage",
+          "fName": "Loss"
+        }
+      },
+      {
+        "id": 8,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 9
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 3
+          },
+          {
+            "to": 4
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 11
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 7
+          },
+          {
+            "to": 6
+          },
+          {
+            "to": 5
+          }
+        ]
+      }
+    ],
+    "ranks": [
+      1,
+      1,
+      3,
+      3,
+      3,
+      5,
+      5,
+      5,
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": [
+      [],
+      [
+        0,
+        8,
+        1
+      ],
+      [
+        9
+      ],
+      [
+        2,
+        10,
+        3,
+        4
+      ],
+      [
+        11
+      ],
+      [
+        7,
+        6,
+        5
+      ]
+    ],
+    "positions": [
+      35,
+      59,
+      13,
+      37,
+      57,
+      45,
+      25,
+      5,
+      47,
+      47,
+      25,
+      25
+    ]
+  }
+}

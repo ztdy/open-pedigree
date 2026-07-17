@@ -35,6 +35,7 @@
   .card { background: var(--panel); border:1px solid var(--line); border-radius:11px; padding:15px 16px;
     box-shadow: var(--shadow); display:flex; flex-direction:column; gap:10px; min-height: 120px; }
   .card .title { font-weight:600; font-size:15px; word-break: break-word; line-height:1.3; cursor: text; }
+  .card .description { font-size:12px; color: var(--muted); margin-top:6px; word-break:break-word; line-height:1.4; white-space:pre-line; }
   .card .clinical { font-size:12px; margin-top:6px; word-break:break-word; line-height:1.35; }
   .card .clinical.genes { color: var(--text); font-weight:500; }
   .card .clinical.tags { color: var(--muted); margin-top:2px; }
@@ -98,6 +99,9 @@
   // i18n: the desktop shell (main process) owns the locale + dictionary; we pull both
   // via IPC at boot and translate locally. T(key) falls back to the English source.
   var I18N = { locale: 'en', messages: {} };
+  // Bundled examples carry bilingual names as {zh,en}; ordinary user titles are plain strings.
+  // Pick the display string by the current UI locale (the page reloads on a language switch).
+  function pickL(v) { if (v && typeof v === 'object') { return v[I18N.locale] || v.en || v.zh || ''; } return v == null ? '' : String(v); }
   function T(k) {
     var m = I18N.messages;
     return (m && Object.prototype.hasOwnProperty.call(m, k)) ? m[k] : k;
@@ -125,7 +129,10 @@
     var mkOpt = function (v, label) { var o = document.createElement('option'); o.value = v; o.textContent = label; return o; };
     projectFilterEl.innerHTML = '';
     projectFilterEl.appendChild(mkOpt(ALL, T('All projects')));
-    projects.forEach(function (p) { projectFilterEl.appendChild(mkOpt(p, p)); });
+    projects.forEach(function (p) {
+      var sample = docs.filter(function (x) { return x.project === p; })[0];
+      projectFilterEl.appendChild(mkOpt(p, (sample && pickL(sample.localizedProject)) || p));
+    });
     if (hasUngrouped) { projectFilterEl.appendChild(mkOpt(UNGROUPED, UNGROUPED_LABEL)); }
     // Restore selection if it still exists, else fall back to All.
     var stillValid = prev === ALL || prev === UNGROUPED && hasUngrouped || projects.indexOf(prev) !== -1;
@@ -177,18 +184,27 @@
     }
     content.innerHTML = '';
     if (activeProject() === ALL) {
-      // Group into sections: named projects (A–Z) first, then Ungrouped.
+      // Group into sections: the user's own named projects (A–Z) first, then Ungrouped, and the
+      // bundled examples pinned to the very bottom so they never push the user's work down.
       var groups = {}; var order = [];
       list.forEach(function (d) {
         var key = d.project || '';
         if (!groups[key]) { groups[key] = []; order.push(key); }
         groups[key].push(d);
       });
-      order.sort(function (a, b) { if (a === '') return 1; if (b === '') return -1; return a.localeCompare(b); });
+      var isExampleGroup = function (key) { return groups[key].some(function (d) { return d.isExample; }); };
+      order.sort(function (a, b) {
+        var ae = isExampleGroup(a), be = isExampleGroup(b);
+        if (ae !== be) return ae ? 1 : -1;   // example groups always last
+        if (a === '') return 1; if (b === '') return -1;  // then Ungrouped after named projects
+        return a.localeCompare(b);
+      });
       order.forEach(function (key) {
         var sec = document.createElement('div'); sec.className = 'project-section';
         var h = document.createElement('div'); h.className = 'project-header';
-        h.textContent = (key || UNGROUPED_LABEL) + '  (' + groups[key].length + ')';
+        var sample = groups[key][0];
+        var projLabel = (sample && pickL(sample.localizedProject)) || key || UNGROUPED_LABEL;
+        h.textContent = projLabel + '  (' + groups[key].length + ')';
         sec.appendChild(h);
         var grid = document.createElement('div'); grid.className = 'grid';
         groups[key].forEach(function (d) { grid.appendChild(card(d)); });
@@ -208,9 +224,19 @@
 
     var title = document.createElement('div');
     title.className = 'title';
-    title.textContent = d.title || T('(untitled)');
+    title.textContent = pickL(d.localizedTitle) || d.title || T('(untitled)');
     if (d.corrupt) { var b = document.createElement('span'); b.className = 'badge'; b.textContent = T('unreadable'); title.appendChild(document.createTextNode(' ')); title.appendChild(b); }
     el.appendChild(title);
+
+    // Description (bundled examples put their source/teaching note here so it stays off the canvas).
+    // localizedDescription follows the UI language like the title; fall back to the plain string.
+    var descText = pickL(d.localizedDescription) || d.description || '';
+    if (!d.corrupt && descText) {
+      var desc = document.createElement('div');
+      desc.className = 'description';
+      desc.textContent = descText;
+      el.appendChild(desc);
+    }
 
     if (!d.corrupt && d.clinical) {
       var c = d.clinical;

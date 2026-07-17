@@ -32,7 +32,11 @@ var VersionUpdater = Class.create( {
     for (var i = 0; i < data.GG.length; i++) {
       var node = data.GG[i];
 
-      if (node.hasOwnProperty('prop')) {
+      // Relationship/childhub nodes carry a `prop` key whose value is null; only person nodes have
+      // a real properties object. Guarding on `node.prop` (not just the key's presence) keeps this
+      // pre-2014 migration from dereferencing null — otherwise opening any pedigree that contains a
+      // childhub throws "Cannot read properties of null (reading 'hasOwnProperty')".
+      if (node && node.prop) {
         if (node.prop.hasOwnProperty('numPersons') && !node.prop.hasOwnProperty('comments') && node.prop.hasOwnProperty('fName') && node.prop.hasOwnProperty('fName') != '') {
           node.prop['comments'] = node.prop.fName;
           delete node.prop.fName;

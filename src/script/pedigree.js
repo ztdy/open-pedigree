@@ -365,9 +365,9 @@ var PedigreeEditor = Class.create({
      * @method isAnyMenuVisible
      */
   isAnyMenuVisible: function() {
-    if (this.getNodeMenu().isVisible() || this.getNodeGroupMenu().isVisible() || this.getPartnershipMenu().isVisible()) {
-      return;
-    }
+    // This used to be `if (...) { return; }` — a bare return, so it answered undefined either
+    // way and both callers (the pan-drag and mouse-wheel-zoom guards in workspace.js) were dead.
+    return this.getNodeMenu().isVisible() || this.getNodeGroupMenu().isVisible() || this.getPartnershipMenu().isVisible();
   },
 
   /**
@@ -416,6 +416,18 @@ var PedigreeEditor = Class.create({
         'function' : 'setAssignedSexAtBirth'
       },
       {
+        'name' : 'art_role',
+        'label' : 'Assisted reproduction',
+        'values' : [
+          {'actual': '',  displayed: 'Not applicable'},
+          {'actual': 'D', displayed: 'Gamete donor (D)'},
+          {'actual': 'G', displayed: 'Gestational carrier (G)'}
+        ],
+        'type' : 'select',
+        'tab': 'Personal',
+        'function' : 'setArtRole'
+      },
+      {
         'name' : 'first_name',
         'label': 'First name',
         'type' : 'text',
@@ -438,10 +450,17 @@ var PedigreeEditor = Class.create({
       },
       {
         'name' : 'proband',
-        'label': 'Proband (index patient — shows the ↙ arrow)',
+        'label': 'Proband (index case — shows P + ↙ arrow)',
         'type' : 'checkbox',
         'tab': 'Personal',
         'function' : 'setProband'
+      },
+      {
+        'name' : 'consultand',
+        'label': 'Consultand (seeking counseling — shows a bare ↙ arrow)',
+        'type' : 'checkbox',
+        'tab': 'Personal',
+        'function' : 'setConsultand'
       },
       {
         'name' : 'carrier',
@@ -477,6 +496,13 @@ var PedigreeEditor = Class.create({
         'type' : 'gene-picker',
         'tab': 'Clinical',
         'function' : 'setGenes'
+      },
+      {
+        'name' : 'genotype',
+        'label' : 'Genotype / variant',
+        'type' : 'text',
+        'tab': 'Clinical',
+        'function' : 'setGenotype'
       },
       {
         'name' : 'hpo_positive',

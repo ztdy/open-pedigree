@@ -80,7 +80,11 @@ var HPOLegend = Class.create( Legend, {
      */
   _updateTermName: function(id) {
     //console.log("updating phenotype display for " + id + ", name = " + this.getTerm(id).getName());
-    var name = this._legendBox.down('li#' + this._getPrefix() + '-' + id + ' .disorder-name');
+    var listElement = this._getListElementForObject(id);
+    var name = listElement && listElement.down('.disorder-name');
+    if (!name) {
+      return;   // the term has no row in this legend (yet)
+    }
     name.update((this.getTerm(id).getName() + '').escapeHTML());  // innerHTML sink: escape to avoid stored XSS
   }
 });

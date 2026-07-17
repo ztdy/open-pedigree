@@ -75,7 +75,11 @@ var DisorgerLegend = Class.create( Legend, {
      * @private
      */
   _updateDisorderName: function(disorderID) {
-    var name = this._legendBox.down('li#' + this._getPrefix() + '-' + disorderID + ' .disorder-name');
+    var listElement = this._getListElementForObject(disorderID);
+    var name = listElement && listElement.down('.disorder-name');
+    if (!name) {
+      return;   // the disorder has no row in this legend (yet)
+    }
     name.update((this.getDisorder(disorderID).getName() + '').escapeHTML());  // innerHTML sink: escape to avoid stored XSS
   },
 

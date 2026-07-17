@@ -68,8 +68,12 @@ PedigreeExport.exportAsPED = function(pedigree, idGenerationPreference) {
       var father = parents[0];
       var mother = parents[1];
 
-      if ( pedigree.GG.properties[parents[0]]['gender'] == 'F' ||
-                pedigree.GG.properties[parents[1]]['gender'] == 'M' ) {
+      // The father/mother columns and the sex column have to agree — whoever is named as the
+      // father must be male in their own row, or the file contradicts itself and plink rejects
+      // it. So both are decided by the same rule, not by `gender` here and by sex-at-birth
+      // below (which, for a trans parent, disagree).
+      if ( PedigreeExport.pedSex(pedigree.GG.properties[parents[0]]) == 2 ||
+                PedigreeExport.pedSex(pedigree.GG.properties[parents[1]]) == 1 ) {
         father = parents[1];
         mother = parents[0];
       }
@@ -78,21 +82,7 @@ PedigreeExport.exportAsPED = function(pedigree, idGenerationPreference) {
       output += '0 0 ';
     }
 
-    // PED needs biological sex for genetic analysis. Per the NSGC 2022 update the symbol is
-    // gender identity, so prefer the recorded sex assigned at birth when present; only fall
-    // back to the symbol's gender when it is not.
-    var sex = 3;
-    var assignedSex = pedigree.GG.properties[i]['assignedSexAtBirth'];
-    if (assignedSex == 'AMAB') {
-      sex = 1;
-    } else if (assignedSex == 'AFAB') {
-      sex = 2;
-    } else if (pedigree.GG.properties[i]['gender'] == 'M') {
-      sex = 1;
-    } else if (pedigree.GG.properties[i]['gender'] == 'F') {
-      sex = 2;
-    }
-    output += (sex + ' ');
+    output += (PedigreeExport.pedSex(pedigree.GG.properties[i]) + ' ');
 
     var status = -9; //missing
     if (pedigree.GG.properties[i].hasOwnProperty('carrierStatus')) {
@@ -161,10 +151,19 @@ PedigreeExport.exportAsSVG = function(pedigree, privacySetting = 'all') {
       domNode.removeChild(childNode);
     }
   }
-  function removeText(dom, fontSize) {
+  // Redact by what a label MEANS, not by how big it is. personVisuals tags each label with a
+  // pii-* class; anything untagged is clinical content and always survives.
+  //
+  // This used to select by font size — remove '20px' for names, '19px' for comments — which
+  // leaked and over-removed at the same time: the external ID label is 18px, so an MRN (more
+  // identifying than a name) survived every level including "minimal", while 20px is the
+  // shared `label` size, so the SB/ECT annotation, AMAB/AFAB and the gender label were
+  // stripped along with the name.
+  function redact(dom, classNames) {
     let toRemove = [];
     for (let textNode of dom.getElementsByTagName('text')){
-      if (textNode.style.fontSize === fontSize){
+      const classes = (textNode.getAttribute('class') || '').split(/\s+/);
+      if (classNames.some((c) => classes.indexOf(c) !== -1)){
         toRemove.push(textNode);
       }
     }
@@ -174,11 +173,14 @@ PedigreeExport.exportAsSVG = function(pedigree, privacySetting = 'all') {
   }
 
   removeHiddenNodes(dom.getRootNode());
+  // 'nopersonal' — "Remove personal information (name and age)". The external ID goes too: it
+  // is an identifier (typically an MRN), which is the most identifying field on the symbol.
   if (privacySetting !== 'all' ){
-    removeText(dom, '20px');
+    redact(dom, ['pii-name', 'pii-age', 'pii-external-id']);
   }
+  // 'minimal' — "...and free-form comments".
   if (privacySetting === 'minimal'){
-    removeText(dom, '19px');
+    redact(dom, ['pii-comment']);
   }
 
   const serializer = new XMLSerializer();
@@ -389,6 +391,7 @@ PedigreeExport.internalToJSONPropertyMapping = {
   'numPersons':    'numPersons',
   'hpoTerms':      'hpoTerms',
   'candidateGenes':'candidateGenes',
+  'genotype':      'genotype',
   'lostContact':   'lostContact'
 };
 
@@ -417,9 +420,41 @@ PedigreeExport.convertProperty = function(internalPropertyName, value) {
   return {'propertyName': externalPropertyName, 'value': value };
 };
 
+/**
+ * The PED sex column: 1 = male, 2 = female, 3 = unknown.
+ *
+ * PED wants biological sex for genetic analysis, but per the NSGC 2022 update the symbol on the
+ * chart is gender identity, so prefer the recorded sex assigned at birth when there is one and
+ * only fall back to the symbol when there is not. Callers must use this for the father/mother
+ * columns as well — the two have to agree.
+ */
+PedigreeExport.pedSex = function(properties) {
+  var assignedSex = properties['assignedSexAtBirth'];
+  if (assignedSex == 'AMAB') {
+    return 1;
+  }
+  if (assignedSex == 'AFAB') {
+    return 2;
+  }
+  if (assignedSex == 'UAAB') {
+    return 3;   // recorded as unknown at birth: fall back to the symbol and we would invent one
+  }
+  if (properties['gender'] == 'M') {
+    return 1;
+  }
+  if (properties['gender'] == 'F') {
+    return 2;
+  }
+  return 3;
+};
+
 PedigreeExport.createNewIDs = function(pedigree, idGenerationPreference, maxLength) {
   var idToNewId = {};
-  var usedIDs   = {};
+  // Prototype-free: an id of "__proto__" (from a person named that) is not an ordinary key on a
+  // plain object — `usedIDs['__proto__'] = true` is silently dropped and hasOwnProperty then
+  // reports it as free forever, so two people exported with the same id and the resulting PED
+  // declared a child to be its own father.
+  var usedIDs   = Object.create(null);
 
   var nextUnusedID = 1;
 
@@ -439,7 +474,7 @@ PedigreeExport.createNewIDs = function(pedigree, idGenerationPreference, maxLeng
     if (maxLength && id.length > maxLength) {
       id = id.substring(0, maxLength);
     }
-    while ( usedIDs.hasOwnProperty(id) ) {
+    while ( id in usedIDs ) {
       if (!maxLength || id.length < maxLength) {
         id = '_' + id;
       } else {

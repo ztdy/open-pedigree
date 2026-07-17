@@ -1304,6 +1304,15 @@ DynamicPositionedGraph.prototype = {
       if (!this._recreateUsingBaseGraph(baseGraph)) {
         return null;
       }  // no changes
+    } else if (importType == 'phenotips') {
+      // The rich internal node-list format (the 'GG' array that serialize()/toJSON() emits and
+      // fromJSON() reads back). Unlike fromJSON, this recomputes the layout from scratch, so a
+      // caller can hand-author a graph with full per-person properties and no positions and let
+      // the positioning engine place it — same parser + relayout path clearAll() already uses.
+      var baseGraph = PedigreeImport.initFromPhenotipsInternal(JSON.parse(importString));
+      if (!this._recreateUsingBaseGraph(baseGraph)) {
+        return null;
+      }  // no changes
     }
 
     //this._debugPrintAll("after");

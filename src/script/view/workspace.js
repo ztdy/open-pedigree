@@ -38,7 +38,22 @@ var Workspace = Class.create({
     this.generateViewControls();
 
     //Initialize pan by dragging
+    //
+    // Raphael has already queued the drag by the time start() runs, and it fires move/end
+    // regardless of what start returns — returning early does NOT cancel the drag. So bailing
+    // out of start used to leave ox/oy unset while end still copied them into viewBoxX/Y,
+    // turning every later pan and zoom into NaN. (Unreachable until isAnyMenuVisible() began
+    // returning a real boolean.)
+    //
+    // ox being set IS the "this drag is live" state, rather than a separate flag the three
+    // callbacks have to keep in step. start() runs on every mousedown and clears it first, so
+    // nothing carries over and nothing has to be cleaned up afterwards — which matters because
+    // end() is not guaranteed to run at all (it fires from a document-level mouseup, and the
+    // button may be released outside the window), and because two mousedowns without a mouseup
+    // between them leave two drag records for this element, so Raphael then fires end twice.
     var start = function() {
+      me.background.ox = undefined;
+      me.background.oy = undefined;
       if (editor.isAnyMenuVisible()) {
         return;
       }
@@ -48,6 +63,9 @@ var Workspace = Class.create({
       me.background.attr({cursor: 'move'});
     };
     var move = function(dx, dy) {
+      if (me.background.ox === undefined) {
+        return;   // start declined this drag
+      }
       var deltax = me.viewBoxX - dx/me.zoomCoefficient;
       var deltay = me.viewBoxY - dy/me.zoomCoefficient;
 
@@ -57,6 +75,9 @@ var Workspace = Class.create({
       me.background.attr({x: deltax, y: deltay });
     };
     var end = function() {
+      if (me.background.ox === undefined) {
+        return;   // start declined this drag; there is nothing to commit
+      }
       me.viewBoxX = me.background.ox;
       me.viewBoxY = me.background.oy;
       me.background.attr({cursor: 'default'});

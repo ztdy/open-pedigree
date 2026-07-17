@@ -53,6 +53,24 @@ var Legend = Class.create( {
   },
 
   /**
+     * Returns the legend row for the given object, or null if it has none.
+     *
+     * The id is derived from a disorder/phenotype NAME, so it can contain characters that are
+     * syntax in a CSS selector. Callers used to build one by concatenation
+     * ('li#' + prefix + '-' + id + ' .disorder-cases'), which breaks on the first comma: a comma
+     * is the selector-LIST separator, so "Cancer, breast" silently became two selectors that
+     * match nothing. Looking the id up literally has no such failure mode.
+     *
+     * @method _getListElementForObject
+     * @param {String|Number} id ID of the object
+     * @return {Element|null}
+     * @private
+     */
+  _getListElementForObject: function(id) {
+    return $(this._getPrefix() + '-' + id) || null;
+  },
+
+  /**
      * Retrieve the color associated with the given object
      *
      * @method getObjectColor
@@ -91,12 +109,23 @@ var Legend = Class.create( {
     // event is legend-specific ('disorder:color' / 'gene:color' / 'phenotype:color') so a
     // gene/phenotype recolor can't wrongly update a disorder chip with a colliding id.
     document.fire(this._getPrefix() + ':color', {'id' : id, color: color});
-    // Repaint affected nodes (disorder + gene colors are drawn on the node shapes).
+    // Repaint affected nodes. Disorder colors are drawn on the node shapes (updateDisorderShapes);
+    // a gene color now tints the gene TEXT label under the symbol (updateGeneLabel), so a gene
+    // recolor — including the color restore on load — must refresh that label too, or it keeps the
+    // color it happened to be created with.
+    var isGeneLegend = this._getPrefix() === 'gene';
     if (this._affectedNodes.hasOwnProperty(id)) {
       this._affectedNodes[id].forEach(function(nodeID) {
         var node = editor.getNode(nodeID);
-        if (node && node.getGraphics && node.getGraphics() && node.getGraphics().updateDisorderShapes) {
-          node.getGraphics().updateDisorderShapes();
+        var graphics = node && node.getGraphics && node.getGraphics();
+        if (!graphics) {
+          return;
+        }
+        if (graphics.updateDisorderShapes) {
+          graphics.updateDisorderShapes();
+        }
+        if (isGeneLegend && graphics.updateGeneLabel) {
+          graphics.updateGeneLabel();
         }
       });
     }
@@ -232,7 +261,8 @@ var Legend = Class.create( {
      * @private
      */
   _updateCaseNumbersForObject : function(id) {
-    var label = this._legendBox.down('li#' + this._getPrefix() + '-' + id + ' .disorder-cases');
+    var listElement = this._getListElementForObject(id);
+    var label = listElement && listElement.down('.disorder-cases');
     if (label) {
       var cases = this._affectedNodes.hasOwnProperty(id) ? this._affectedNodes[id].length : 0;
       label.update(cases + '&nbsp;' + (cases === 1 ? I18n.t('case') : I18n.t('cases')));

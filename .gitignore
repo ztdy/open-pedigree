@@ -61,5 +61,5 @@ typings/
 .next
 dist/
 
-# editor / vault cruft
-.obsidian/
+# e2e test report (generated)
+test/e2e/report/

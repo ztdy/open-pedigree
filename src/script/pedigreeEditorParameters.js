@@ -20,11 +20,17 @@ PedigreeEditorParameters.attributes = {
   twinMonozygothicLineShiftY: 24,
   curvedLinesCornerRadius: 25,
   unbornShape: {'font-size': 50, 'font-family': 'Cambria'},
+  // The ART "D"/"G" letter sits inside the symbol. Smaller than the "P" pregnancy marker, which
+  // has a whole (empty) diamond to itself — this letter shares the symbol with any shading.
+  artRoleShape: {'font-size': 34, 'font-family': 'Cambria'},
   carrierShape: {fill : '#333333'},
   carrierDotRadius: 8,
   presymptomaticShape: {fill : '#777777', 'stroke': '#777777'},
   presymptomaticShapeWidth: 8,
   evaluationShape: {'font-size': 40, 'font-family': 'Arial'},
+  // The "P" beside the proband arrow. Bold and dark like the arrow itself: together they are one
+  // marker, and a lighter letter would read as an annotation of the individual instead.
+  probandLabel: {'font-size': 22, 'font-family': 'Arial', 'font-weight': 'bold', fill: '#595959', stroke: 'none'},
   nodeShape: {fill: '0-#ffffff:0-#B8B8B8:100', stroke: '#333333', 'stroke-width': 3.0},
   nodeShapeMenuOn: {fill: '#000', stroke: 'none', 'fill-opacity': 0.1},
   nodeShapeMenuOff: {fill: '#000', stroke: 'none', 'fill-opacity': 0},
@@ -46,6 +52,9 @@ PedigreeEditorParameters.attributes = {
   nameLabels: {'font-size': 20, 'font-family': 'Arial'},
   commentLabel: {'font-size': 19, 'font-family': 'Arial' },
   externalIDLabels: {'font-size': 18, 'font-family': 'Arial' },
+  // Candidate-gene and genotype/variant text shown under the symbol. Italic is the HGVS/gene-symbol
+  // convention and also sets these apart from the plain-text name/ID labels.
+  geneLabels: {'font-size': 17, 'font-family': 'Arial', 'font-style': 'italic'},
   disorderShapes: {},
   partnershipNode: {fill: '#dc7868', stroke: 'black', 'stroke-width':2},
   partnershipRadius: 6.5,

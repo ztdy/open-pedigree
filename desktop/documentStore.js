@@ -96,7 +96,7 @@ class DocumentStore {
   }
 
   // Persist a pedigree. `graph` is the raw JSON string from editor.getGraph().toJSON().
-  async save({ documentId, title, graph, svg, project }) {
+  async save({ documentId, title, graph, svg, project, description, localizedTitle, localizedProject, localizedDescription, isExample }) {
     if (!isValidId(documentId)) throw new Error('save: invalid documentId');
     if (typeof graph !== 'string') throw new Error('save: graph must be a JSON string');
     let parsedGraph;
@@ -136,9 +136,21 @@ class DocumentStore {
         // Preserve the existing project unless the caller explicitly passed one.
         project: project !== undefined ? normalizeProject(project) : normalizeProject(base && base.project),
         createdAt: (base && base.createdAt) || now,
-        updatedAt: now,
-        graph: parsedGraph
+        updatedAt: now
       };
+      // Carry forward the example metadata (bilingual display names + source/description) unless
+      // the caller explicitly overrides it, so editing and saving an example never strips it.
+      const keepDesc = description !== undefined ? description : (base && base.description);
+      if (keepDesc != null) { envelope.description = keepDesc; }
+      const keepLT = localizedTitle !== undefined ? localizedTitle : (base && base.localizedTitle);
+      if (keepLT) { envelope.localizedTitle = keepLT; }
+      const keepLP = localizedProject !== undefined ? localizedProject : (base && base.localizedProject);
+      if (keepLP) { envelope.localizedProject = keepLP; }
+      const keepLD = localizedDescription !== undefined ? localizedDescription : (base && base.localizedDescription);
+      if (keepLD) { envelope.localizedDescription = keepLD; }
+      const keepEx = isExample !== undefined ? isExample : (base && base.isExample);
+      if (keepEx) { envelope.isExample = true; }
+      envelope.graph = parsedGraph;
 
       // Atomically write the new version, then atomically refresh the .bak from the
       // previous good bytes (both temp -> fsync -> rename, so neither can be torn).
@@ -180,6 +192,11 @@ class DocumentStore {
       documentId: env.documentId || documentId,
       title: env.title,
       project: normalizeProject(env.project),
+      description: env.description != null ? env.description : undefined,
+      localizedTitle: env.localizedTitle || undefined,
+      localizedProject: env.localizedProject || undefined,
+      localizedDescription: env.localizedDescription || undefined,
+      isExample: env.isExample ? true : undefined,
       fileFormatVersion: env.fileFormatVersion,
       createdAt: env.createdAt,
       updatedAt: env.updatedAt,
@@ -274,7 +291,14 @@ class DocumentStore {
       createdAt: env.createdAt,
       updatedAt: env.updatedAt,
       isEmpty: env.graph == null,
-      clinical: this._clinicalSummary(env.graph)
+      clinical: this._clinicalSummary(env.graph),
+      // Optional metadata carried by the bundled examples: a human-readable description (source /
+      // teaching note, shown on the library card) and bilingual display names picked by UI locale.
+      description: env.description != null ? env.description : undefined,
+      localizedTitle: env.localizedTitle || undefined,
+      localizedProject: env.localizedProject || undefined,
+      localizedDescription: env.localizedDescription || undefined,
+      isExample: env.isExample ? true : undefined
     };
   }
 

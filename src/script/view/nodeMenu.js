@@ -6,6 +6,100 @@ import AgeCalc from 'pedigree/view/ageCalc';
 import I18n from 'pedigree/i18n';
 
 /**
+ * True when the text shown for a picked term survives being encoded and decoded again.
+ *
+ * A free-text disorder/phenotype has no code behind it: the id IS the name, encoded, and the
+ * encoding is not injective — 'a__b' and 'a b' both encode to the id 'a__b' (see the note in
+ * disorder.js, which records the two fix schemes ruled out on evidence). Typing the first one
+ * therefore writes the second into the file, and merges the two diseases into a single legend
+ * row, one colour and one case count, with everyone carrying either reported as carrying the
+ * merged one. Refusing the name is what stops that.
+ *
+ * THIS RUNS ON EVERY ENTRY IN THE LIST, not only the one being added — including terms already
+ * recorded on the patient, which the clinician never touched. So anything it refuses is a term
+ * an unrelated edit DELETES. That is not hypothetical: an earlier version of this file exempted
+ * ids that looked like codes, and removing the exemption refused 183 real HPO names and 30 real
+ * Orphanet ones, because 'Generalized non-motor (absence) seizure' encodes ') ' as '_J_' + '__'
+ * and the decoder ate the escape's delimiter. A patient with absence seizures recorded lost them
+ * on the next edit. That is fixed in Disorder.desanitizeID — in the DECODER, where the fault
+ * was — and every bundled ontology name is swept on each push (test/unit/term-ids.test.js).
+ * Before making this stricter, remember that the cost of a false refusal is a deleted diagnosis.
+ *
+ * The exemption is gone, and nothing is exempt now: a real coded term passes on its displayed
+ * name, and free text shaped like an encoded id ('HP_C_0001250', which decodes to 'HP:0001250')
+ * is refused instead of being waved onto the real code's id.
+ *
+ * WHAT THIS DOES AND DOES NOT GUARANTEE. For a free-text entry the id IS the encoded displayed
+ * name, so among accepted free-text entries distinct names get distinct ids: if S(n1) = S(n2)
+ * then n1 = D(S(n1)) = D(S(n2)) = n2. It is NOT the blanket claim that distinct accepted names
+ * get distinct ids — the id comes from item.value, not from the name, so a coded term picked
+ * from the ontology (value '154700', shown 'Marfan syndrome') and the same code typed as free
+ * text (value and text both '154700') are two accepted names on one id. They denote the same
+ * concept, so that is harmless, but the theorem does not cover it. Nor is it a guarantee about
+ * the model as a whole: setDisorders/setHPO, JSON and GA4GH import take arbitrary strings and
+ * never come through here, so an 'a__b' arriving in a file still merges. Guarding those is a
+ * separate problem and NOT solvable by moving this check down — see below.
+ *
+ * WHY HERE, and not somewhere more central: this is the only layer that has the name at all.
+ * The picker's hidden input holds the ENCODED id for a term loaded from an existing patient
+ * ('Marfan__syndrome') and the raw text only for something just typed, and the two are
+ * indistinguishable — 'Marfan__syndrome' is a legal name as well as an id. The same check one
+ * layer down in Person.addDisorder was reverted for exactly this: undo replays getDisorders(),
+ * i.e. ids, through it, so it read 'Marfan__syndrome' as an unstorable name and emptied the
+ * patient's disorder list. The menu is never on the undo or load path. See the note above
+ * addDisorder in person.js before moving this.
+ *
+ * @param name the text shown for this entry. Usually a name, but NOT always: it is a raw code
+ *        before the ontology resolves it ('ORPHA:1234'), 'loading...' while it is in flight, and
+ *        the bare MIM number when the offline path gives up. All of those round-trip, so they
+ *        are accepted; none of them is refused for not looking like a name.
+ * @param TermType Disorder or HPOTerm
+ */
+var termNameIsStorable = function (name, TermType) {
+  return TermType.desanitizeID(TermType.sanitizeID(name)) === name;
+};
+
+/**
+ * The terms currently in a picker, minus any whose displayed name cannot be stored as typed.
+ * Rejected entries are dropped from the list as well, so the menu shows what was actually kept.
+ *
+ * @return {Object} {terms: Array of TermType, rejected: Array of names}
+ */
+var acceptedTermsFromPicker = function (container, fieldName, TermType, picker) {
+  var terms = [];
+  var rejected = [];
+  var removed = [];
+  container.select('input[type=hidden][name=' + fieldName + ']').each(function(item) {
+    var valueElement = item.next('.value');
+    var displayed = valueElement && valueElement.firstChild && valueElement.firstChild.nodeValue;
+    // Judge only when the displayed text is there. Without it there is no way to tell a name
+    // from an id — and judging an id as a name is precisely what emptied patients' disorder
+    // lists in the reverted version of this check. An entry with no displayed text is therefore
+    // kept unexamined, which leaves the collision open for a term whose name is empty; that is
+    // the safe side of the trade.
+    if (displayed && !termNameIsStorable(displayed, TermType)) {
+      rejected.push(displayed);
+      removed.push(item.up('li'));
+      return;
+    }
+    terms.push(new TermType(item.value, displayed || item.value));
+  });
+  // Removed after the walk, not during it, and by plain DOM removal rather than
+  // suggestPicker.removeItem(): that fires the selection-change notification whose handler
+  // called us, re-entering this getter while it is still iterating.
+  removed.forEach(function(listItem) {
+    listItem && listItem.remove();
+  });
+  // removeItem() would have done this; taking the DOM out from under the widget does not, and
+  // without it the "clear all" tool can sit above an empty list.
+  if (removed.length && picker && picker._suggestPicker
+      && typeof picker._suggestPicker.updateListTools === 'function') {
+    picker._suggestPicker.updateListTools();
+  }
+  return {terms: terms, rejected: rejected};
+};
+
+/**
  * NodeMenu is a UI Element containing options for AbstractNode elements
  *
  * @class NodeMenu
@@ -114,13 +208,14 @@ var NodeMenu = Class.create({
     // disease
     this.form.select('input.suggest-omim').each(function(item) {
       if (!item.hasClassName('initialized')) {
-        // Desktop build: no offline OMIM data, so point the picker at opdata://disorders/
-        // (returns empty) instead of the unreachable OmimService — otherwise every keystroke
-        // fires a failing XHR whose legacy handler shows a blocking alert. Free-text stays.
+        // Desktop build: serve suggestions from the bundled Orphanet dataset over opdata://
+        // instead of the unreachable OmimService (whose failing XHRs the legacy handler turns
+        // into blocking alerts). Free-text stays available for anything not in the dataset.
+        // `lang` only picks which name is displayed; the stored id is locale-independent.
         var omimDesktop = !!(window.openPedigreeDesktop && window.openPedigreeDesktop.isDesktop);
         // Create the Suggest.
         item._suggest = new PhenoTips.widgets.Suggest(item, {
-          script: omimDesktop ? 'opdata://disorders/?' : (Disorder.getOMIMServiceURL() + '&'),
+          script: omimDesktop ? ('opdata://disorders/?lang=' + I18n.getLocale() + '&') : (Disorder.getOMIMServiceURL() + '&'),
           queryProcessor: omimDesktop ? null : (typeof(PhenoTips.widgets.SolrQueryProcessor) == 'undefined' ? null : new PhenoTips.widgets.SolrQueryProcessor({
             'name' : {'wordBoost': 20, 'phraseBoost': 40},
             'nameSpell' : {'wordBoost': 50, 'phraseBoost': 100, 'stubBoost': 20},
@@ -469,9 +564,14 @@ var NodeMenu = Class.create({
         var results = [];
         var container = this.up('.field-box');
         if (container) {
-          container.select('input[type=hidden][name=' + data.name + ']').each(function(item){
-            results.push(new Disorder(item.value, item.next('.value') && item.next('.value').firstChild.nodeValue || item.value));
-          });
+          var picked = acceptedTermsFromPicker(container, data.name, Disorder, this);
+          results = picked.terms;
+          if (picked.rejected.length) {
+            // One key with the names appended, rather than a sentence built from two: the
+            // dictionary is keyed on English source text and word order is not portable.
+            alert(I18n.t('This disorder name cannot be stored exactly as typed, so it has not been added. Please rephrase it, avoiding a doubled underscore and sequences like _L_ or _u0041_.')
+              + '\n\n' + picked.rejected.join('\n'));
+          }
         }
         return [results];
       }.bind(diseasePicker);
@@ -494,9 +594,12 @@ var NodeMenu = Class.create({
         var results = [];
         var container = this.up('.field-box');
         if (container) {
-          container.select('input[type=hidden][name=' + data.name + ']').each(function(item){
-            results.push(new HPOTerm(item.value, item.next('.value') && item.next('.value').firstChild.nodeValue || item.value));
-          });
+          var picked = acceptedTermsFromPicker(container, data.name, HPOTerm, this);
+          results = picked.terms;
+          if (picked.rejected.length) {
+            alert(I18n.t('This phenotype name cannot be stored exactly as typed, so it has not been added. Please rephrase it, avoiding a doubled underscore and sequences like _L_ or _u0041_.')
+              + '\n\n' + picked.rejected.join('\n'));
+          }
         }
         return [results];
       }.bind(hpoPicker);

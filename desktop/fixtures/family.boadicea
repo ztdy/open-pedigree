@@ -1,0 +1,6 @@
+BOADICEA import pedigree file format 2.0
+FamID Name Target IndivID FathID MothID Sex Twin Dead Age Yob 1BrCa 2BrCa OvCa ProCa PanCa Gtest Mutn Ashkn ER PR HER2 CK14 CK56
+FAM1 John 0 1 0 0 M 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+FAM1 Jane 0 2 0 0 F 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+FAM1 Sam 1 3 1 2 M 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+FAM1 Kim 0 4 1 2 F 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0

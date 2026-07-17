@@ -1,3 +1,4 @@
+import { escapeIDChar, decodeTermID } from 'pedigree/model/helpers';
 /*
  * HPOTerm is a class for storing phenotype information and loading it from the
  * the HPO database. These phenotypes can be attributed to an individual in the Pedigree.
@@ -71,19 +72,32 @@ var HPOTerm = Class.create( {
 /*
  * IDs are used as part of HTML IDs in the Legend box, which breaks when IDs contain some non-alphanumeric symbols.
  * For that purpose these symbols in IDs are converted in memory (but not in the stored pedigree) to some underscores.
+ *
+ * See Disorder.sanitizeID for why out-of-charset characters are escaped rather than collapsed
+ * to '__' — a free-text phenotype is stored by its id alone, so the mapping has to be reversible
+ * and injective. 'HP:nnnnnnn' ids keep their legacy '_C_' mapping and are unaffected.
  */
 HPOTerm.sanitizeID = function(id) {
-  var temp = id.replace(/[\(\[]/g, '_L_');
-  temp = temp.replace(/[\)\]]/g, '_J_');
+  // '(' keeps its legacy '_L_' (and ')' its '_J_') so ids already saved by older versions are
+  // unchanged. '[' and ']' used to share those same two escapes, which made the mapping
+  // non-injective — 'x (y)' and 'x [y]' were one id — and turned every bracket into a
+  // parenthesis on the way back. They take an ordinary _uXXXX_ escape instead.
+  var temp = id.replace(/\(/g, '_L_');
+  temp = temp.replace(/\)/g, '_J_');
   temp = temp.replace(/[:]/g, '_C_');
-  return temp.replace(/[^a-zA-Z0-9,;_\-*]/g, '__');
+  return temp.replace(/[^a-zA-Z0-9,;_\-*]/g, escapeIDChar);
 };
 
+/*
+ * One left-to-right pass — see decodeTermID in helpers.js. The phenotype side has the same fault
+ * as the disorder side plus ':': 'EMG: axonal abnormality' (HP:0003482, a real term) encodes ': '
+ * as '_C_' + '__', and the old cascade replaced '__' first and ate the '_C_'s delimiter, so it
+ * came back as 'EMG_C _axonal abnormality'.
+ */
+var HPO_ESCAPES = {'_C_': ':', '_L_': '(', '_J_': ')'};
+
 HPOTerm.desanitizeID = function(id) {
-  var temp = id.replace(/__/g, ' ');
-  temp = temp.replace(/_C_/g, ':');
-  temp = temp.replace(/_L_/g, '(');
-  return temp.replace(/_J_/g, ')');
+  return decodeTermID(id, HPO_ESCAPES);
 };
 
 HPOTerm.isValidID = function(id) {

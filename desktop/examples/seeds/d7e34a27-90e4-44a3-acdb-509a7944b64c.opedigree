@@ -1,0 +1,670 @@
+{
+  "fileFormatVersion": 1,
+  "documentId": "d7e34a27-90e4-44a3-acdb-509a7944b64c",
+  "title": "亨廷顿病 · Huntington disease",
+  "project": "示例家系 · Example pedigrees",
+  "isExample": true,
+  "createdAt": "2026-01-01T11:58:00.000Z",
+  "updatedAt": "2026-01-01T11:58:00.000Z",
+  "localizedTitle": {
+    "zh": "亨廷顿病",
+    "en": "Huntington disease"
+  },
+  "localizedProject": {
+    "zh": "示例家系",
+    "en": "Example pedigrees"
+  },
+  "description": "常染色体显性、成年发病的神经退行性病：每代均有患者；男-男传递链 I-1→II-3→III-4→IV-1 证明为常染色体；父系传递中 CAG 逐代扩增、发病提前(遗传早现)，母系近乎稳定；预测性检测发现症状前携带者。先证者 III-4，38岁发病。\n来源/Source: Ranen NG et al. Am J Hum Genet 1995;57:593 (PMID 7668287). [ex:d7e34a27]",
+  "localizedDescription": {
+    "zh": "常染色体显性、成年发病的神经退行性病：每代均有患者；男-男传递链 I-1→II-3→III-4→IV-1 证明为常染色体；父系传递中 CAG 逐代扩增、发病提前(遗传早现)，母系近乎稳定；预测性检测发现症状前携带者。先证者 III-4，38岁发病。\n来源/Source: Ranen NG et al. Am J Hum Genet 1995;57:593 (PMID 7668287). [ex:d7e34a27]",
+    "en": "An autosomal dominant, adult-onset neurodegenerative disease: affected individuals in every generation; the male-to-male chain I-1 -> II-3 -> III-4 -> IV-1 proves autosomal inheritance; paternal transmission shows CAG expansion with earlier onset each generation (anticipation) while maternal transmission is near-stable; predictive testing identifies presymptomatic carriers. Proband III-4, onset at 38.\n来源/Source: Ranen NG et al. Am J Hum Genet 1995;57:593 (PMID 7668287). [ex:d7e34a27]"
+  },
+  "graph": {
+    "GG": [
+      {
+        "id": 0,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "lifeStatus": "deceased",
+          "fName": "I-1"
+        },
+        "outedges": [
+          {
+            "to": 26
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "prop": {
+          "gender": "F",
+          "lifeStatus": "deceased",
+          "fName": "I-2"
+        },
+        "outedges": [
+          {
+            "to": 26
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "prop": {
+          "gender": "M",
+          "fName": "II-2"
+        },
+        "outedges": [
+          {
+            "to": 28
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "prop": {
+          "gender": "F",
+          "fName": "II-4"
+        },
+        "outedges": [
+          {
+            "to": 30
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "prop": {
+          "gender": "F",
+          "fName": "II-8"
+        },
+        "outedges": [
+          {
+            "to": 32
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "prop": {
+          "gender": "F",
+          "fName": "III-5"
+        },
+        "outedges": [
+          {
+            "to": 34
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "prop": {
+          "gender": "M",
+          "fName": "III-7"
+        },
+        "outedges": [
+          {
+            "to": 36
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "prop": {
+          "gender": "M",
+          "fName": "III-10"
+        },
+        "outedges": [
+          {
+            "to": 38
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "prop": {
+          "gender": "F",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "lifeStatus": "deceased",
+          "fName": "II-1"
+        },
+        "outedges": [
+          {
+            "to": 28
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "lifeStatus": "deceased",
+          "fName": "II-3"
+        },
+        "outedges": [
+          {
+            "to": 30
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "prop": {
+          "gender": "F",
+          "fName": "II-5"
+        }
+      },
+      {
+        "id": 11,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "fName": "II-7"
+        },
+        "outedges": [
+          {
+            "to": 32
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "prop": {
+          "gender": "F",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "fName": "III-1"
+        }
+      },
+      {
+        "id": 13,
+        "prop": {
+          "gender": "M",
+          "fName": "III-3"
+        }
+      },
+      {
+        "id": 14,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "proband": true,
+          "fName": "III-4"
+        },
+        "outedges": [
+          {
+            "to": 34
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "prop": {
+          "gender": "F",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "fName": "III-6"
+        },
+        "outedges": [
+          {
+            "to": 36
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "prop": {
+          "gender": "M",
+          "carrierStatus": "presymptomatic",
+          "fName": "III-8"
+        }
+      },
+      {
+        "id": 17,
+        "prop": {
+          "gender": "F",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "fName": "III-9"
+        },
+        "outedges": [
+          {
+            "to": 38
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "prop": {
+          "gender": "M",
+          "fName": "III-11"
+        }
+      },
+      {
+        "id": 19,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            "Huntington__disease"
+          ],
+          "carrierStatus": "affected",
+          "candidateGenes": [
+            "HTT"
+          ],
+          "fName": "IV-1"
+        }
+      },
+      {
+        "id": 20,
+        "prop": {
+          "gender": "F",
+          "carrierStatus": "presymptomatic",
+          "fName": "IV-2"
+        }
+      },
+      {
+        "id": 21,
+        "prop": {
+          "gender": "F",
+          "fName": "IV-3"
+        }
+      },
+      {
+        "id": 22,
+        "prop": {
+          "gender": "F",
+          "carrierStatus": "presymptomatic",
+          "fName": "IV-4"
+        }
+      },
+      {
+        "id": 23,
+        "prop": {
+          "gender": "M",
+          "fName": "IV-5"
+        }
+      },
+      {
+        "id": 24,
+        "prop": {
+          "gender": "M",
+          "fName": "IV-6"
+        }
+      },
+      {
+        "id": 25,
+        "prop": {
+          "gender": "F",
+          "fName": "IV-7"
+        }
+      },
+      {
+        "id": 26,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 27
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 8
+          },
+          {
+            "to": 9
+          },
+          {
+            "to": 10
+          },
+          {
+            "to": 11
+          }
+        ]
+      },
+      {
+        "id": 28,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 29
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 13
+          },
+          {
+            "to": 12
+          }
+        ]
+      },
+      {
+        "id": 30,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 31
+          }
+        ]
+      },
+      {
+        "id": 31,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 14
+          },
+          {
+            "to": 15
+          },
+          {
+            "to": 16
+          }
+        ]
+      },
+      {
+        "id": 32,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 33
+          }
+        ]
+      },
+      {
+        "id": 33,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 17
+          },
+          {
+            "to": 18
+          }
+        ]
+      },
+      {
+        "id": 34,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 35
+          }
+        ]
+      },
+      {
+        "id": 35,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 21
+          },
+          {
+            "to": 20
+          },
+          {
+            "to": 19
+          }
+        ]
+      },
+      {
+        "id": 36,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 37
+          }
+        ]
+      },
+      {
+        "id": 37,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 23
+          },
+          {
+            "to": 22
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 39
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 25
+          },
+          {
+            "to": 24
+          }
+        ]
+      }
+    ],
+    "ranks": [
+      1,
+      1,
+      3,
+      3,
+      3,
+      5,
+      5,
+      5,
+      3,
+      3,
+      3,
+      3,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      1,
+      2,
+      3,
+      4,
+      3,
+      4,
+      3,
+      4,
+      5,
+      6,
+      5,
+      6,
+      5,
+      6
+    ],
+    "order": [
+      [],
+      [
+        0,
+        26,
+        1
+      ],
+      [
+        27
+      ],
+      [
+        2,
+        28,
+        8,
+        9,
+        30,
+        3,
+        10,
+        11,
+        32,
+        4
+      ],
+      [
+        29,
+        31,
+        33
+      ],
+      [
+        13,
+        12,
+        5,
+        34,
+        14,
+        6,
+        36,
+        15,
+        16,
+        7,
+        38,
+        17,
+        18
+      ],
+      [
+        35,
+        37,
+        39
+      ],
+      [
+        21,
+        20,
+        19,
+        23,
+        22,
+        25,
+        24
+      ]
+    ],
+    "positions": [
+      111,
+      135,
+      38,
+      125,
+      189,
+      45,
+      89,
+      153,
+      81,
+      101,
+      145,
+      165,
+      25,
+      5,
+      69,
+      113,
+      133,
+      177,
+      197,
+      77,
+      57,
+      37,
+      117,
+      97,
+      175,
+      155,
+      123,
+      123,
+      50,
+      50,
+      113,
+      113,
+      177,
+      177,
+      57,
+      57,
+      101,
+      101,
+      165,
+      165
+    ]
+  }
+}

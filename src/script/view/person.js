@@ -27,6 +27,10 @@ var Person = Class.create(AbstractPerson, {
   initialize: function($super, x, y, id, properties) {
     //var timer = new Timer();
     this._isProband = (id == 0);
+    // Whether this individual is a consultand: someone seeking genetic counseling. Independent
+    // of the proband flag — the two are routinely different people, and there is no "exactly
+    // one" rule here (a couple attending together are both consultands).
+    this._isConsultand = false;
     !this._type && (this._type = 'Person');
     this._setDefault();
     var gender = properties.hasOwnProperty('gender') ? properties['gender'] : 'U';
@@ -55,6 +59,10 @@ var Person = Class.create(AbstractPerson, {
     this._disorders = [];
     this._hpo = [];
     this._candidateGenes = [];
+    // Free-text genotype / variant result (e.g. "BRCA1 c.68_69del (+)", "CFTR: negative"). Per
+    // NSGC 2022/2025 the specific variant belongs in a text annotation below the symbol, NOT in a
+    // fill colour — genotype and phenotype are separate visual channels. See getGenotype.
+    this._genotype = '';
     this._twinGroup = null;
     this._monozygotic = false;
     // Twin zygosity explicitly recorded as unknown (NSGC group E: draws a "?" at the twin
@@ -65,6 +73,10 @@ var Person = Class.create(AbstractPerson, {
     // Sex assigned at birth, recorded separately from the symbol/gender (NSGC 2022 update):
     // '' (not recorded), 'AMAB', 'AFAB', or 'UAAB'. Shown as an annotation below the symbol.
     this._assignedSexAtBirth = '';
+    // Role in assisted reproduction (NSGC 2022 Figure 5, as corrected in 2025): '' (none),
+    // 'D' (egg or sperm donor), or 'G' (gestational carrier — carried the pregnancy but did
+    // not contribute the ovum). Drawn as a letter inside the symbol.
+    this._artRole = '';
   },
 
   /**
@@ -114,6 +126,50 @@ var Person = Class.create(AbstractPerson, {
     this._isProband = !!isProband;
     // Redraw the gender graphics so the proband arrow is added/removed. Guarded because
     // this can run from assignProperties before graphics exist (initial construction).
+    var g = this.getGraphics && this.getGraphics();
+    if (g && typeof g.setGenderGraphics === 'function') {
+      g.setGenderGraphics();
+    }
+  },
+
+  /**
+     * Returns True if this individual is a consultand (someone seeking genetic counseling).
+     *
+     * @method isConsultand
+     * @return {Boolean}
+     */
+  isConsultand: function() {
+    return this._isConsultand;
+  },
+
+  /**
+     * Alias of isConsultand, for the generic property/undo machinery which derives a getter
+     * name from the setter (setConsultand -> getConsultand).
+     *
+     * @method getConsultand
+     * @return {Boolean}
+     */
+  getConsultand: function() {
+    return this._isConsultand;
+  },
+
+  /**
+     * Marks/unmarks this individual as a consultand. NSGC draws them with a bare arrow — the
+     * same arrow the proband carries, minus the "P".
+     *
+     * Deliberately NOT mutually exclusive with the proband flag, and deliberately not limited
+     * to one per pedigree: the consultand is whoever is seeking counseling, which may be
+     * several people, and may or may not be the proband. Where an individual is both, the
+     * proband marker wins (the "P" is drawn), because NSGC defines no combined symbol and
+     * "P + arrow" is the more specific statement.
+     *
+     * @method setConsultand
+     * @param {Boolean} isConsultand
+     */
+  setConsultand: function(isConsultand) {
+    this._isConsultand = !!isConsultand;
+    // Redraw so the arrow appears/disappears. Guarded: assignProperties can run before the
+    // graphics exist during construction (mirrors setProband).
     var g = this.getGraphics && this.getGraphics();
     if (g && typeof g.setGenderGraphics === 'function') {
       g.setGenderGraphics();
@@ -261,6 +317,40 @@ var Person = Class.create(AbstractPerson, {
     var g = this.getGraphics && this.getGraphics();
     if (g && typeof g.updateSexLabel === 'function') {
       g.updateSexLabel();
+    }
+  },
+
+  /**
+     * Returns this person's assisted-reproduction role ('' | 'D' | 'G').
+     *
+     * @method getArtRole
+     * @return {String}
+     */
+  getArtRole: function() {
+    return this._artRole;
+  },
+
+  /**
+     * Sets the assisted-reproduction role. Valid values are '' (none), 'D' (egg or sperm donor)
+     * and 'G' (gestational carrier); anything else is ignored. Redraws the in-symbol letter.
+     *
+     * There is deliberately no separate value for "surrogate": a surrogate donates the egg AND
+     * carries the pregnancy, and NSGC (2022 Figure 5, kept by the 2025 correction) says such a
+     * person "should only be referred to as a donor" — so they are a 'D' whose pregnancy hangs
+     * below them. The distinction is made by where the pregnancy is drawn, not by the letter.
+     *
+     * @method setArtRole
+     */
+  setArtRole: function(value) {
+    value = value || '';
+    if (['', 'D', 'G'].indexOf(value) === -1 || value == this._artRole) {
+      return;
+    }
+    this._artRole = value;
+    // Guarded: assignProperties can run before graphics exist during construction.
+    var g = this.getGraphics && this.getGraphics();
+    if (g && typeof g.updateArtRoleLabel === 'function') {
+      g.updateArtRoleLabel();
     }
   },
 
@@ -578,9 +668,10 @@ var Person = Class.create(AbstractPerson, {
     for (var i = 0; i < this.getDisorders().length; i++) {
       result.push(editor.getDisorderLegend().getObjectColor(this.getDisorders()[i]));
     }
-    for (var i = 0; i < this.getGenes().length; i++) {
-      result.push(editor.getGeneLegend().getObjectColor(this.getGenes()[i]));
-    }
+    // Candidate genes deliberately do NOT contribute a fill colour any more. A gene sector on top
+    // of a disorder sector made an affected individual read as having "two diseases" (NSGC: the
+    // fill means PHENOTYPE). The gene identity is now shown as a text label under the symbol
+    // (updateGeneLabel) and remains listed in the Candidate Genes legend/key.
     return result;
   },
 
@@ -613,6 +704,25 @@ var Person = Class.create(AbstractPerson, {
      *
      * @method addDisorder
      * @param {Disorder} disorder Disorder object or a free-text name string
+     *
+     * DO NOT validate the string here. The free-text encoding is not injective ('a__b' and 'a b'
+     * share one id — see the note in disorder.js), and rejecting the ambiguous names at this
+     * point looks like the obvious fix. It is not, and it was tried and reverted:
+     *
+     *   - a string arriving here is NOT reliably a name. Undo replays getDisorders(), which
+     *     returns the ENCODED ids, so undo hands this 'Marfan__syndrome' and 'HP_C_0001250'.
+     *     A name-shaped check refuses both, and the disorder is gone for good — verified, not
+     *     theorised: the disorder list came back empty after a plain undo.
+     *   - it would not catch the case it was written for anyway. The disease/HPO pickers build
+     *     a Disorder/HPOTerm object (nodeMenu.js, 'disease-picker'), so clinician-typed free
+     *     text arrives as an OBJECT and never reaches the string branch at all.
+     *
+     * A guard has to sit where the name exists as a name at all — at the picker, which displays
+     * one alongside the id (nodeMenu.js) — not here, where a bare string is a name or an id with
+     * nothing to tell them apart. Note the picker does NOT know the text was freshly typed
+     * either: it shows resolved ontology names for terms loaded from the patient, and the guard
+     * there judges those too, so a false refusal deletes a recorded diagnosis. See the note on
+     * termNameIsStorable before touching either.
      */
   addDisorder: function(disorder) {
     if (typeof disorder != 'object') {
@@ -783,7 +893,9 @@ var Person = Class.create(AbstractPerson, {
     for(var i = 0; i < genes.length; i++) {
       this.addGene( genes[i] );
     }
-    this.getGraphics().updateDisorderShapes();
+    // Genes render as a text label under the symbol now (not a fill sector), so refresh that label
+    // rather than the disorder fills.
+    this.getGraphics().updateGeneLabel();
   },
 
   /**
@@ -794,6 +906,32 @@ var Person = Class.create(AbstractPerson, {
      */
   getGenes: function() {
     return this._candidateGenes;
+  },
+
+  /**
+     * Returns this person's free-text genotype / variant annotation.
+     *
+     * @method getGenotype
+     * @return {String}
+     */
+  getGenotype: function() {
+    return this._genotype;
+  },
+
+  /**
+     * Sets the free-text genotype / variant annotation (e.g. "BRCA1 c.68_69del (+)"). Rendered as a
+     * text label below the symbol per NSGC 2022/2025 (variant identity is text, not a fill colour).
+     *
+     * @method setGenotype
+     * @param {String} value
+     */
+  setGenotype: function(value) {
+    value = (value == null) ? '' : String(value);
+    if (value == this._genotype) {
+      return;
+    }
+    this._genotype = value;
+    this.getGraphics().updateGenotypeLabel();
   },
 
   /**
@@ -921,15 +1059,21 @@ var Person = Class.create(AbstractPerson, {
       // The proband checkbox is disabled while THIS node is the proband, so it can only be
       // moved (checked on another individual), never cleared to leave zero probands.
       proband:       {value : this.isProband(), disabled: this.isProband()},
+      // Not disabled when this individual is also the proband: the two roles are independent,
+      // and the drawing simply prefers the proband marker while both are set.
+      consultand:    {value : this.isConsultand()},
       first_name:    {value : this.getFirstName()},
       last_name:     {value : this.getLastName()},
       external_id:   {value : this.getExternalID()},
       gender:        {value : this.getGender(), inactive: inactiveGenders},
       assigned_sex:  {value : this.getAssignedSexAtBirth()},
+      // A pregnancy/loss is the product of assisted reproduction, never a donor or carrier itself.
+      art_role:      {value : this.getArtRole(), inactive: this.isFetus()},
       date_of_birth: {value : this.getBirthDate(), inactive: this.isFetus()},
       carrier:       {value : this.getCarrierStatus(), disabled: inactiveCarriers},
       disorders:     {value : disorders},
       candidate_genes: {value : this.getGenes()},
+      genotype:      {value : this.getGenotype()},
       adopted:       {value : this.isAdopted(), inactive: cantChangeAdopted},
       state:         {value : this.getLifeStatus(), inactive: inactiveStates},
       date_of_death: {value : this.getDeathDate(), inactive: this.isFetus()},
@@ -965,6 +1109,9 @@ var Person = Class.create(AbstractPerson, {
     // wins; if none is present the view falls back to node 0 (see View.ensureSingleProband).
     if (this.isProband()) {
       info['proband'] = true;
+    }
+    if (this.isConsultand()) {
+      info['consultand'] = true;
     }
     if (this.getFirstName() != '') {
       info['fName'] = this.getFirstName();
@@ -1002,6 +1149,9 @@ var Person = Class.create(AbstractPerson, {
     if (this.getGenes().length > 0) {
       info['candidateGenes'] = this.getGenes();
     }
+    if (this.getGenotype() != '') {
+      info['genotype'] = this.getGenotype();
+    }
     if (this._twinGroup !== null) {
       info['twinGroup'] = this._twinGroup;
     }
@@ -1022,6 +1172,9 @@ var Person = Class.create(AbstractPerson, {
     }
     if (this._assignedSexAtBirth) {
       info['assignedSexAtBirth'] = this._assignedSexAtBirth;
+    }
+    if (this._artRole) {
+      info['artRole'] = this._artRole;
     }
     return info;
   },
@@ -1054,6 +1207,9 @@ var Person = Class.create(AbstractPerson, {
       }
       if(info.hpoTerms) {
         this.setHPO(info.hpoTerms);
+      }
+      if (info.hasOwnProperty('genotype') && this._genotype != info.genotype) {
+        this.setGenotype(info.genotype);
       }
       if(info.candidateGenes) {
         this.setGenes(info.candidateGenes);
@@ -1094,8 +1250,14 @@ var Person = Class.create(AbstractPerson, {
       if (info.hasOwnProperty('proband') && this.isProband() != info.proband) {
         this.setProband(info.proband);
       }
+      if (info.hasOwnProperty('consultand') && this.isConsultand() != info.consultand) {
+        this.setConsultand(info.consultand);
+      }
       if (info.hasOwnProperty('assignedSexAtBirth') && this._assignedSexAtBirth != info.assignedSexAtBirth) {
         this.setAssignedSexAtBirth(info.assignedSexAtBirth);
+      }
+      if (info.hasOwnProperty('artRole') && this._artRole != info.artRole) {
+        this.setArtRole(info.artRole);
       }
       return true;
     }

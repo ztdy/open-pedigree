@@ -149,8 +149,11 @@ var ImportSelector = Class.create( {
       pedAndGedcomOption.disabled = false;
     }
 
+    // GA4GH carries its own identifier and initFromGA4GH always reads it back into the external
+    // ID, so there is nothing for this option to switch: dynamicGraph does not even pass it on
+    // for that format. It used to stay enabled and silently do nothing.
     var saveExternalID = $$('input[type=checkbox][name="mark-external"]')[0];
-    saveExternalID.disabled = false;
+    saveExternalID.disabled = (importType == 'GA4GH');
   },
 
   /**

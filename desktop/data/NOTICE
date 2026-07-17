@@ -1,0 +1,44 @@
+Third-party data bundled with Open Pedigree
+===========================================
+
+disorders.json — Orphanet rare disease nomenclature
+---------------------------------------------------
+Source:      Orphanet / Orphadata — https://www.orphadata.com/ (en_product1.xml)
+Licence:     Creative Commons Attribution 4.0 International (CC BY 4.0)
+             https://creativecommons.org/licenses/by/4.0/
+Attribution: Orphanet. INSERM 1997. An online rare disease and orphan drug data base.
+             Available at https://www.orpha.net/. Accessed 2026-06.
+
+Contains the Orphanet nomenclature (ORPHAcode + disease name). Chinese names are machine
+translations of the Orphanet English names, produced by us; they are a derivative of the
+CC BY material above and carry no endorsement by Orphanet. Orphanet classification
+categories (disorder_type = "Category") are excluded — they are headings, not diagnoses.
+
+Built by desktop/build/make-disorders.py.
+
+
+genes.json — HGNC gene symbols
+------------------------------
+Source:      HUGO Gene Nomenclature Committee (HGNC) — https://www.genenames.org/
+Licence:     Freely available; no restriction on use or redistribution.
+
+hpo.json — Human Phenotype Ontology terms
+-----------------------------------------
+Source:      Human Phenotype Ontology — https://hpo.jax.org/
+Licence:     HPO licence — https://hpo.jax.org/license
+             Free for both commercial and non-commercial use; redistribution permitted
+             with attribution.
+
+fonts/NotoSansSC-Regular.otf — CJK font for PDF export
+------------------------------------------------------
+Source:      Google Noto Fonts — https://fonts.google.com/noto
+Licence:     SIL Open Font License 1.1
+
+
+NOT bundled: OMIM
+-----------------
+OMIM (https://omim.org/) is copyrighted by Johns Hopkins University and its terms do not
+permit redistributing the database inside an application. Disorder suggestions therefore
+come from Orphanet only. A pedigree may still *reference* an OMIM MIM number (typed as
+free text, or imported from a file); the desktop build simply cannot resolve it to a name
+offline, and shows the number instead.
