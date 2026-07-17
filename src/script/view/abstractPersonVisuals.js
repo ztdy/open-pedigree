@@ -97,6 +97,11 @@ var AbstractPersonVisuals = Class.create(AbstractNodeVisuals, {
           delete me._toMark;
         }
         delete me._callback;
+        // Reposition labels now that the move animation has landed. drawLabels short-circuits while
+        // a position animation is in flight (this._callback set) — otherwise it would clear the
+        // label transform mid-animation and Raphael's queued transform would then land it a full
+        // move-delta off. Run it here, after the callback is cleared, so labels settle correctly.
+        me.drawLabels && me.drawLabels();
         callback && callback();
       };
 

@@ -974,6 +974,9 @@ var Person = Class.create(AbstractPerson, {
     if(status != this.getChildlessStatus()) {
       this._childlessStatus = status;
       this.getGraphics().updateChildlessShapes();
+      // drawLabels() adds a childless/infertile offset to the label stack, so re-run it: without
+      // this the name (and every label below it) stays ~6px too high until the next redraw.
+      this.getGraphics().drawLabels();
       this.getGraphics().getHoverBox().regenerateHandles();
       // The mark also hides the child handle on every partnership this person is part of, so
       // those partnership hoverboxes must be regenerated too — otherwise their handle set stays

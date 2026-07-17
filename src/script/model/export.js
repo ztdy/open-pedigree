@@ -297,9 +297,18 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
   }
   doc.restore();
 
-  let lineOffset = 14;
-  let catOffset = 2;
-  let legendHeight = (lineOffset * (headingCount+itemCount)) + (headingCount*catOffset) + 10;
+  // Legend layout metrics. Headings are 14pt, items 10pt. The heading needs more vertical
+  // advance than an item line (headingLineHeight > itemLineHeight); when they were equal the
+  // first item's colour swatch was drawn on top of the heading's descenders. The swatch is
+  // vertically centred within its item line, and item text is indented past the swatch.
+  let swatchSize = 8;
+  let textIndent = swatchSize + 4;   // swatch width + gap before the name
+  let rightMargin = 10;              // keep the widest line off the page edge
+  let itemLineHeight = 14;
+  let headingLineHeight = 18;
+  let catGap = 6;                    // extra breathing room between categories
+  let legendHeight = (headingCount * headingLineHeight) + (itemCount * itemLineHeight) + (headingCount * catGap) + 10;
+  let rightXOffset = doc.page.width - (textIndent + rightMargin + maxWidth);
   let xOffset = 5;
   let yOffset = doc.page.height - legendHeight;
   let pedigreeXOffset = 5;
@@ -317,12 +326,12 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
     yOffset = doc.page.height - legendHeight;
     pedigreeYOffset = 5;
   } else if (legendPos === 'BottomRight') {
-    xOffset = doc.page.width - (20 + maxWidth) ;
+    xOffset = rightXOffset;
     yOffset = doc.page.height - legendHeight;
     pedigreeYOffset = 5;
   } else {
     // 'TopRight' default
-    xOffset = doc.page.width - (20 + maxWidth) ;
+    xOffset = rightXOffset;
     yOffset = 5;
     pedigreeYOffset = legendHeight;
   }
@@ -332,17 +341,16 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
     doc.save();
     doc.fontSize(14);
     doc.text(cat.heading, xOffset, yOffset, {lineBreak: false});
-    yOffset += lineOffset;
+    yOffset += headingLineHeight;
     for (let item of cat.items){
-      // console.log(item);
       doc.save();
-      doc.rect(xOffset, yOffset, 8, 8).fill(item.colour, 1);
+      doc.rect(xOffset, yOffset + (itemLineHeight - swatchSize) / 2, swatchSize, swatchSize).fill(item.colour, 1);
       doc.restore();
       doc.fontSize(10);
-      doc.text(item.name + ' (' + item.cases + ')', xOffset + 10, yOffset, {lineBreak: false});
-      yOffset += lineOffset;
+      doc.text(item.name + ' (' + item.cases + ')', xOffset + textIndent, yOffset + (itemLineHeight - 10) / 2, {lineBreak: false});
+      yOffset += itemLineHeight;
     }
-    yOffset += catOffset;
+    yOffset += catGap;
     doc.restore();
   }
 

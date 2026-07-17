@@ -910,6 +910,13 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      * @method drawLabels
      */
   drawLabels: function() {
+    // While a position-change animation is in flight the whole graphic set (labels included) is
+    // being moved by an animated transform; repositioning labels now — which clears that transform
+    // and re-anchors them — collides with the queued animation and lands them a move-delta off.
+    // Defer: the animation's completion callback re-runs drawLabels once the move has settled.
+    if (this._callback) {
+      return;
+    }
     var labels = this.getLabels();
     var selectionOffset = this._labelSelectionOffset();
     var childlessOffset = this.getChildlessStatusLabel() ? PedigreeEditorParameters.attributes.label['font-size'] : 0;
@@ -919,6 +926,14 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
 
     var startY = this.getY() + lowerBound * 1.8 + selectionOffset + childlessOffset;
     for (var i = 0; i < labels.length; i++) {
+      // Position each label from scratch against the node's CURRENT centre. A node move (setPos)
+      // translates its whole graphic set — labels included — via a relative transform; if that
+      // transform is left on the label, this y assignment stacks on top of it (and getBBox() below
+      // reads the transformed box, so the offset cascades to every later label). Clearing the
+      // transform and re-anchoring x makes drawLabels the single source of truth for label position,
+      // so labels always follow the node instead of drifting after a relayout.
+      labels[i].transform('');
+      labels[i].attr('x', this.getX());
       var offset = (labels[i].alignTop) ? (getElementHalfHeight(labels[i]) - 7) : 0;
       labels[i].attr('y', startY + offset);
       labels[i].oy = (labels[i].attr('y') - selectionOffset);
