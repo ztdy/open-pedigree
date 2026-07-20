@@ -217,7 +217,7 @@ var SaveLoadEngine = Class.create( {
     this._restoreLegendColors(JSONString);
 
     if (centerAround0) {
-      editor.getWorkspace().centerAroundGraph();
+      editor.getWorkspace().centerAroundGraphWhenStable();
     }
 
     if (!noUndo) {
@@ -253,7 +253,7 @@ var SaveLoadEngine = Class.create( {
     editor.getView().ensureSingleProband();
 
     if (centerAround0) {
-      editor.getWorkspace().centerAroundGraph();
+      editor.getWorkspace().centerAroundGraphWhenStable();
     }
 
     if (!noUndo) {
@@ -292,9 +292,14 @@ var SaveLoadEngine = Class.create( {
   },
 
   _displayData: function(jsonData) {
-    // update the json to the current version, then load it in the current interface 
+    // update the json to the current version, then load it in the current interface.
+    // Pass centerAround0=true so a REOPENED saved document is centred — this was missing, so
+    // opening an existing pedigree left it uncentred (only new/template pedigrees, which load via
+    // a call that does pass it, were centred).
     this.createGraphFromSerializedData(
-      editor.getVersionUpdater().updateToCurrentVersion(jsonData)
+      editor.getVersionUpdater().updateToCurrentVersion(jsonData),
+      false, // add to the undo stack as before
+      true   // centre the loaded pedigree
     );
   },
 

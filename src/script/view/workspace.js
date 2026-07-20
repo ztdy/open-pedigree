@@ -507,6 +507,14 @@ var Workspace = Class.create({
     if (editor.getNodeMenu()) {
       editor.getNodeMenu().reposition();
     }
+    // If a centre request was deferred because the viewport had no real dimensions yet (e.g. a
+    // just-opened window), run it now that this resize has given us real ones — this is what
+    // fixes the "reopened pedigree lands in the top-left corner" case.
+    if (this._recenterPending && this.getWidth() > 1 && this.getHeight() > 1) {
+      var pending = this._recenterPending;
+      this._recenterPending = null;
+      this.centerAroundGraph(pending.instant);
+    }
   },
 
   /**
@@ -544,6 +552,18 @@ var Workspace = Class.create({
      * @param {Boolean} instant Whether to skip the pan animation
      */
   centerAroundGraph: function(instant) {
+    // A freshly-opened editor window can run the load/center before its viewport has been laid
+    // out, so getWidth()/getHeight() are ~0 and adjustSizeToScreen clamps height to 1. Centering
+    // with those degenerate dimensions would drop the graph's CENTER onto the top-left corner
+    // (panTo target = centre - dimension/2 ≈ centre). Defer the request until real dimensions
+    // exist — the resize that follows layout (adjustSizeToScreen) and an animation-frame backstop
+    // both re-run it — then centre correctly.
+    if (this.getWidth() <= 1 || this.getHeight() <= 1) {
+      this._recenterPending = { instant: !!instant };
+      this._scheduleDeferredCenter();
+      return;
+    }
+    this._recenterPending = null;
     var nodeMap = editor.getView().getNodeMap();
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, count = 0;
     for (var id in nodeMap) {
@@ -571,7 +591,72 @@ var Workspace = Class.create({
     var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     var xOffset = this.getWidth()/this.zoomCoefficient;
     var yOffset = this.getHeight()/this.zoomCoefficient;
-    this.panTo(cx - xOffset/2, cy - yOffset/2, instant);
+    var tx = cx - xOffset/2, ty = cy - yOffset/2;
+    if (instant) {
+      // Set the viewBox DIRECTLY (atomic + exact). panTo animates via chained setTimeouts and its
+      // result depends on the starting scroll position, which left the graph landing off-centre on
+      // load ("reopened pedigree not centred / off to the left"). A direct set is always exact.
+      this.viewBoxX = tx; this.viewBoxY = ty;
+      this.getPaper().setViewBox(tx, ty, xOffset, yOffset);
+      this.background && this.background.attr({x: tx, y: ty});
+    } else {
+      this.panTo(tx, ty, instant);
+    }
+  },
+
+  // Centre once the graph has SETTLED. On load/import the layout engine animates every node into
+  // position over a few hundred ms, so centring immediately reads intermediate coordinates and
+  // lands off (the reopened-pedigree "sits off to the left / not centred" symptom). Poll the node
+  // bounding box until it stops changing (and the viewport has real dimensions), then centre
+  // exactly. Bounded so it can never spin forever.
+  centerAroundGraphWhenStable: function() {
+    var me = this;
+    var raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
+      ? window.requestAnimationFrame.bind(window) : function(f) { return setTimeout(f, 32); };
+    var bboxKey = function() {
+      var nm = editor.getView().getNodeMap(), s = '';
+      for (var id in nm) {
+        if (nm[id] && typeof nm[id].getX === 'function') {
+          var x = nm[id].getX(), y = nm[id].getY();
+          if (!isNaN(x) && !isNaN(y)) { s += Math.round(x) + ',' + Math.round(y) + ';'; }
+        }
+      }
+      return s;
+    };
+    var last = null, stable = 0, tries = 0;
+    var step = function() {
+      tries++;
+      if (me.getWidth() > 1 && me.getHeight() > 1) {   // real dimensions available
+        var k = bboxKey();
+        if (k === last) { stable++; } else { stable = 0; last = k; }
+        if (stable >= 3) { me.centerAroundGraph(true); return; } // settled -> centre exactly, once
+      }
+      if (tries > 600) { me.centerAroundGraph(true); return; }   // ~10s cap -> centre with what we have
+      raf(step);
+    };
+    raf(step);
+  },
+
+  // Animation-frame backstop for a deferred centre request (see centerAroundGraph): keeps polling
+  // until the viewport has real dimensions, then centres. Bounded so it can never spin forever.
+  _scheduleDeferredCenter: function() {
+    if (this._recenterRAF) { return; }
+    this._recenterRAF = true;
+    var me = this, tries = 0;
+    var raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
+      ? window.requestAnimationFrame.bind(window) : function(f) { return setTimeout(f, 32); };
+    var tick = function() {
+      if (!me._recenterPending) { me._recenterRAF = false; return; }
+      if (me.getWidth() > 1 && me.getHeight() > 1) {
+        me._recenterRAF = false;
+        var p = me._recenterPending; me._recenterPending = null;
+        me.centerAroundGraph(p.instant);
+        return;
+      }
+      if (++tries > 600) { me._recenterRAF = false; me._recenterPending = null; return; } // give up
+      raf(tick);
+    };
+    raf(tick);
   }
 });
 
