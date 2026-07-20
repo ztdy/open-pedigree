@@ -154,15 +154,54 @@ var ExportSelector = Class.create( {
      * @param pictureBox
      * @private
      */
+  /**
+   * A filename stem unique to THIS pedigree, so exporting a second family does not silently
+   * overwrite the first (both used to default to "open-pedigree.*"). Derived from the desktop
+   * document title, else the proband's name, else the generic fallback. Sanitised for all OSes.
+   * @private
+   */
+  _exportFileBase: function() {
+    var base = '';
+    try {
+      var s = window.__ped_desktop && window.__ped_desktop.session;
+      if (s && s.activeTitle) { base = String(s.activeTitle); }
+    } catch (e) { /* web build: no desktop session */ }
+    if (!base) {
+      try {
+        var pid = editor.getGraph().getProbandId();
+        var node = pid != null ? editor.getView().getNode(pid) : null;
+        if (node) {
+          var fn = node.getFirstName ? (node.getFirstName() || '') : '';
+          var ln = node.getLastName ? (node.getLastName() || '') : '';
+          base = (fn + ' ' + ln).trim();
+        }
+      } catch (e) { /* no usable proband */ }
+    }
+    // Drop control characters (0x00–0x1F) without a control-char regex (eslint no-control-regex).
+    base = base.split('').filter(function(ch) { return ch.charCodeAt(0) >= 32; }).join('');
+    // strip path separators / reserved chars, collapse whitespace, trim underscores + trailing dots
+    base = base.replace(/[\\/:*?\"<>|]+/g, '_')
+      .replace(/\s+/g, '_').replace(/_+/g, '_')
+      .replace(/^[_.]+|[_.]+$/g, '');   // Windows also rejects trailing dots
+    // Windows reserves device names (CON, PRN, AUX, NUL, COM1–9, LPT1–9, incl. the ¹²³ superscript
+    // variants) even WITH an extension, and treats the segment before the FIRST dot as the name — so
+    // "CON.report" -> "CON.report.pdf" is still reserved. Test that stem and prefix "_" if it matches.
+    var stem = base.split('.')[0];
+    if (/^(con|prn|aux|nul|conin\$|conout\$|com[0-9¹²³]|lpt[0-9¹²³])$/i.test(stem)) { base = '_' + base; }
+    if (!base) { base = 'open-pedigree'; }
+    return base.slice(0, 80);
+  },
+
   _onExportStarted: function() {
     this.hide();
 
     var exportType = $$('input:checked[type=radio][name="export-type"]')[0].value;
+    var fileBase = this._exportFileBase();
 
     if (exportType == 'ped') {
       var idGenerationSetting = $$('input:checked[type=radio][name="ped-options"]')[0].value;
       var exportString = PedigreeExport.exportAsPED(editor.getGraph().DG, idGenerationSetting);
-      var fileName = 'open-pedigree.ped';
+      var fileName = fileBase + '.ped';
       var mimeType = 'text/plain';
       // Uses FileSaver global
       /* eslint-disable no-undef */
@@ -171,14 +210,14 @@ var ExportSelector = Class.create( {
       var privacySetting = $$('input:checked[type=radio][name="privacy-options"]')[0].value;
       if (exportType == 'GA4GH') {
         var exportString = PedigreeExport.exportAsGA4GH(editor.getGraph().DG, privacySetting);
-        var fileName = 'open-pedigree-GA4GH-fhir.json';
+        var fileName = fileBase + '-GA4GH-fhir.json';
         var mimeType = 'application/fhir+json';
         // Uses FileSaver global
         /* eslint-disable no-undef */
         saveTextAs(exportString, fileName);
       } else if (exportType == 'svg') {
         var exportString = PedigreeExport.exportAsSVG(editor.getGraph().DG, privacySetting);
-        var fileName = 'open-pedigree.svg';
+        var fileName = fileBase + '.svg';
         var mimeType = 'image/svg+xml';
         saveTextAs(exportString, fileName);
       } else if (exportType == 'pdf') {
@@ -186,7 +225,7 @@ var ExportSelector = Class.create( {
         var layout = $$('select[name="pdf-page-orientation"]')[0].value;
         var legendPos = $$('select[name="pdf-legend-pos"]')[0].value;
         // exportAsPDF is async (it lazily fetches the embedded CJK font before building).
-        PedigreeExport.exportAsPDF(editor.getGraph().DG, privacySetting, pageSize, layout, legendPos)
+        PedigreeExport.exportAsPDF(editor.getGraph().DG, privacySetting, pageSize, layout, legendPos, fileBase + '.pdf')
           .catch(function(e) {
             console.error('PDF export failed', e);
             alert(I18n.t('PDF export failed: ') + (e && e.message || e));

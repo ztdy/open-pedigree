@@ -45,6 +45,22 @@ const api = {
   setLocale: (locale) => ipcRenderer.invoke('app:set-locale', String(locale)),
   getI18n: () => ipcRenderer.invoke('app:get-i18n'),
 
+  // Library view state (search / project filter / sort / scroll) preserved across the
+  // library<->editor page navigation. Plain JSON in/out.
+  getLibraryUiState: () => ipcRenderer.invoke('app:get-library-ui-state'),
+  setLibraryUiState: (state) => ipcRenderer.invoke('app:set-library-ui-state', {
+    search: state && state.search != null ? String(state.search) : '',
+    project: state && state.project != null ? String(state.project) : '',
+    sort: state && state.sort != null ? String(state.sort) : '',
+    scrollTop: state && Number.isFinite(state.scrollTop) ? state.scrollTop : 0
+  }),
+
+  // Help / About group (D1-D4, D6). All open a native dialog / external link in main.
+  showAbout: () => ipcRenderer.invoke('app:about'),
+  checkForUpdates: () => ipcRenderer.invoke('app:check-updates'),
+  openManual: () => ipcRenderer.invoke('app:open-manual'),
+  sendFeedback: () => ipcRenderer.invoke('app:feedback'),
+
   // Register a handler main calls when the user picks "Save" on the close dialog.
   // The handler must return a Promise; we relay success/failure back to main, echoing
   // the requestId so main can correlate the ack (Codex M1 review #1/#10/#11). Only this

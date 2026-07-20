@@ -177,11 +177,15 @@ var Controller = Class.create({
         if (propertySetFunction == 'setDeathDate') {
           undoEvent.memo.properties['setLifeStatus'] = node.getLifeStatus();
         }
-        if (propertySetFunction == 'setDisorders') {
-          undoEvent.memo.properties['setCarrierStatus'] = node.getCarrierStatus();
-        }
+        // F1b: a disorder object now fully carries its own status, so a setDisorders undo no longer
+        // needs to also restore a symbol-level carrier status (and replaying the lossy derived
+        // status AFTER the exact list would corrupt a mixed affected/carrier set). Only the reverse
+        // coupling remains: setCarrierStatus can mutate the disorder list (the F1b compat shim), so
+        // snapshot the exact disorders. Inserted AFTER setCarrierStatus in the memo, it replays last
+        // and restores the precise per-disorder statuses that the derived shim cannot. Deep copy so
+        // a later in-place status edit can't mutate the saved undo frame.
         if (propertySetFunction == 'setCarrierStatus') {
-          undoEvent.memo.properties['setDisorders'] = node.getDisorders().slice(0);
+          undoEvent.memo.properties['setDisorders'] = node.getDisordersForExport();
         }
 
         var field = propertySetFunction.replace(/^set/, '').toLowerCase();

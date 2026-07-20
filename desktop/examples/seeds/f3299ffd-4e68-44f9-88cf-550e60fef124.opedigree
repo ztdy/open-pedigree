@@ -37,7 +37,13 @@
         "id": 1,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "carrier"
+            }
+          ],
           "fName": "I-2"
         },
         "outedges": [
@@ -87,9 +93,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "MELAS"
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "MT-TL1"
           ],
@@ -106,9 +115,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "MELAS"
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "MT-TL1"
           ],
@@ -124,7 +136,13 @@
         "id": 7,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-5"
         },
         "outedges": [
@@ -167,9 +185,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "MELAS"
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "MT-TL1"
           ],
@@ -181,7 +202,13 @@
         "id": 13,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-4"
         }
       },
@@ -197,9 +224,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "MELAS"
+            {
+              "uuid": "d1",
+              "name": "MELAS",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "MT-TL1"
           ],

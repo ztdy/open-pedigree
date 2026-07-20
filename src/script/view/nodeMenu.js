@@ -530,6 +530,10 @@ var NodeMenu = Class.create({
       this._trackIMEComposition(text);
       //this._attachFieldEventListeners(text, ['keypress', 'keyup'], [true]);
       this._attachFieldEventListeners(text, ['keyup', 'compositionend'], [true]);
+      // The genotype/variant text field gets the same family quick-add row as the pickers.
+      if (data.name === 'genotype') {
+        result.insert(new Element('div', {'class': 'family-quick-add'}));
+      }
       return result;
     },
     'textarea' : function (data) {
@@ -584,6 +588,7 @@ var NodeMenu = Class.create({
         }
       });
       this._attachFieldEventListeners(diseasePicker, ['custom:selection:changed']);
+      result.insert(new Element('div', {'class': 'family-quick-add'}));
       return result;
     },
     'hpo-picker' : function (data) {
@@ -612,6 +617,7 @@ var NodeMenu = Class.create({
         }
       });
       this._attachFieldEventListeners(hpoPicker, ['custom:selection:changed']);
+      result.insert(new Element('div', {'class': 'family-quick-add'}));
       return result;
     },
     'gene-picker' : function (data) {
@@ -637,6 +643,7 @@ var NodeMenu = Class.create({
         }
       });
       this._attachFieldEventListeners(genePicker, ['custom:selection:changed']);
+      result.insert(new Element('div', {'class': 'family-quick-add'}));
       return result;
     },
     'select' : function (data) {
@@ -782,6 +789,169 @@ var NodeMenu = Class.create({
       _this._setFieldInactive[_this.fieldMap[name].type].call(_this, _this.fieldMap[name].element, _this.fieldMap[name].inactive);
       _this._setFieldDisabled[_this.fieldMap[name].type].call(_this, _this.fieldMap[name].element, _this.fieldMap[name].disabled);
     });
+    this._renderFamilyQuickAdd(this.targetNode);
+  },
+
+  // The disorders / genes / phenotypes already recorded ANYWHERE in this pedigree, as {id, value}
+  // (the same shape the pickers accept). Lets a clinician add "the family's" terms to another member
+  // with one click instead of re-typing them.
+  _familyTerms : function (type) {
+    var seen = {}, out = [];
+    var nodeMap = editor.getView().getNodeMap();
+    for (var id in nodeMap) {
+      if (!Object.prototype.hasOwnProperty.call(nodeMap, id)) { continue; }
+      var node = nodeMap[id];
+      if (!node) { continue; }
+      if (type === 'disorder' && typeof node.getDisorders === 'function') {
+        node.getDisorders().forEach(function (d) {
+          var k = String(d.uuid);
+          if (!seen[k] && d.name) { seen[k] = 1; out.push({ id: d.uuid, value: d.name }); }
+        });
+      } else if (type === 'gene' && typeof node.getGenes === 'function') {
+        node.getGenes().forEach(function (g) { if (!seen[g]) { seen[g] = 1; out.push({ id: g, value: g }); } });
+      } else if (type === 'hpo' && typeof node.getHPO === 'function') {
+        node.getHPO().forEach(function (h) {
+          if (!seen[h]) { seen[h] = 1; var t = editor.getHPOLegend().getTerm(h); out.push({ id: h, value: t ? t.getName() : h }); }
+        });
+      } else if (type === 'genotype' && typeof node.getGenotype === 'function') {
+        var g = (node.getGenotype() || '').trim();   // the whole free-text genotype/variant of a member
+        if (g && !seen[g]) { seen[g] = 1; out.push({ id: g, value: g }); }
+      }
+    }
+    out.sort(function (a, b) { return String(a.value).localeCompare(String(b.value)); });
+    return out;
+  },
+
+  // Render the one-click "family" quick-add chips under each clinical picker, excluding terms the
+  // current individual already has. Re-run whenever the menu (re)populates or a chip is used.
+  _renderFamilyQuickAdd : function (node) {
+    if (!node || typeof node.getDisorders !== 'function') { return; }   // Person menus only
+    var _this = this;
+    var specs = [
+      { name: 'disorders',       cls: 'suggest-omim',  type: 'disorder', own: function () { return node.getDisorders().map(function (d) { return String(d.uuid); }); }, disorder: true },
+      { name: 'candidate_genes', cls: 'suggest-genes', type: 'gene',     own: function () { return node.getGenes().map(String); } },
+      { name: 'hpo_positive',    cls: 'suggest-hpo',   type: 'hpo',      own: function () { return node.getHPO().map(String); } },
+      { name: 'genotype',        text: true,           type: 'genotype', own: function () { return [String(node.getGenotype() || '')]; } }
+    ];
+    specs.forEach(function (spec) {
+      var field = _this.fieldMap[spec.name] && _this.fieldMap[spec.name].element;
+      if (!field) { return; }
+      var container = field.down('.family-quick-add');
+      if (!container) { return; }
+      container.update('');
+      var terms;
+      if (spec.text) {
+        // Genotype/variant is a single free-text field: chips are the distinct genotype strings used
+        // by OTHER members; skip any the current field already contains (substring).
+        var input = field.down('input[type=text][name=' + spec.name + ']');
+        if (!input) { return; }
+        var cur = String(input.value || '');
+        terms = _this._familyTerms(spec.type).filter(function (t) { return cur.indexOf(t.value) === -1; });
+        if (!terms.length) { return; }
+        container.insert(new Element('span', { 'class': 'family-quick-add-label' }).update(I18n.t('In this family:')));
+        terms.forEach(function (t) {
+          var chip = new Element('span', { 'class': 'family-quick-add-chip', title: I18n.t('Add to this individual') })
+            .update(('+ ' + t.value + '').escapeHTML());
+          Element.observe(chip, 'click', function (e) {
+            e.stop();
+            var v = String(input.value || '').trim();
+            input.value = v ? (v + '; ' + t.value) : t.value;   // append (or set if empty)
+            // native keyup (not Prototype's custom Event.fire) so the field's real keyup listener runs -> setGenotype
+            input.dispatchEvent(new Event('keyup', { bubbles: true }));
+            _this._renderFamilyQuickAdd(node);
+            if (typeof _this.reposition === 'function') { _this.reposition(); }
+          });
+          container.insert(chip);
+        });
+        return;
+      }
+      var picker = field.down('input.' + spec.cls);
+      if (!picker || !picker._suggestPicker) { return; }
+      var ownIds = {};
+      spec.own().forEach(function (i) { ownIds[String(i)] = 1; });
+      terms = _this._familyTerms(spec.type).filter(function (t) { return !ownIds[String(t.id)]; });
+      if (!terms.length) { return; }
+      container.insert(new Element('span', { 'class': 'family-quick-add-label' }).update(I18n.t('In this family:')));
+      terms.forEach(function (t) {
+        var chip = new Element('span', { 'class': 'family-quick-add-chip', title: I18n.t('Add to this individual') })
+          .update(('+ ' + t.value + '').escapeHTML());   // innerHTML sink: escape the (user-typed) name
+        Element.observe(chip, 'click', function (e) {
+          e.stop();
+          picker._silent = false;
+          picker._suggestPicker.addItem(t.id, t.value, '');
+          if (spec.disorder) {
+            _this._updateDisorderColor(t.id, editor.getDisorderLegend().getObjectColor(t.id));
+          }
+          Event.fire(picker, 'custom:selection:changed');   // -> setDisorders / setGenes / setHPO
+          if (spec.disorder) { _this._decorateDisorderStatuses(field); }
+          _this._renderFamilyQuickAdd(node);   // drop the just-added chip
+          if (typeof _this.reposition === 'function') { _this.reposition(); }
+        });
+        container.insert(chip);
+      });
+    });
+  },
+
+  /**
+     * F1d: append an affected/carrier toggle to each recorded disorder in the disease picker, so a
+     * person can be (say) affected by one disease and a carrier of another. The toggle is bound by
+     * uuid to the live disorder object on the current node; a freshly-typed disorder not yet
+     * committed to the node gets no toggle until the next time the menu opens (it defaults to
+     * affected). Status is edited here directly (not through the picker's name-only _getValue), and
+     * setDisorders preserves it across later add/remove edits.
+     */
+  _decorateDisorderStatuses : function (container) {
+    var node = this.targetNode;
+    if (!node || typeof node.getDisorders !== 'function') {
+      return;
+    }
+    var findDisorder = function(uuid) {
+      var ds = node.getDisorders();
+      for (var i = 0; i < ds.length; i++) {
+        if (ds[i].uuid === uuid) {
+          return ds[i];
+        }
+      }
+      return null;
+    };
+    container.select('input[type=hidden][name=disorders]').each(function(input) {
+      var li = input.up('li');
+      if (!li) {
+        return;
+      }
+      var existing = li.down('.disorder-status-toggle');
+      if (existing) {
+        existing.remove();
+      }
+      var disorder = findDisorder(input.value);
+      if (!disorder) {
+        return;
+      }
+      var duuid = disorder.uuid;
+      var toggle = new Element('span', {'class': 'disorder-status-toggle', title: I18n.t('Click to toggle affected / carrier')});
+      var render = function() {
+        toggle.update((disorder.status === 'carrier' ? I18n.t('carrier') : I18n.t('affected')));
+        toggle.className = 'disorder-status-toggle ' + disorder.status;
+      };
+      render();
+      Element.observe(toggle, 'click', function(e) {
+        e.stop();
+        // Route through the controller (setDisorders with explicit-status objects) so the change is
+        // recorded on the ActionStack and is undo/redo-able — a bare in-place mutation was neither.
+        var newStatus = (disorder.status === 'carrier') ? 'affected' : 'carrier';
+        var newDisorders = node.getDisorders().map(function(d) {
+          var copy = { uuid: d.uuid, name: d.name, status: (d.uuid === duuid ? newStatus : d.status) };
+          if (d.needsRepair) { copy.needsRepair = true; }
+          return copy;
+        });
+        document.fire('pedigree:node:setproperty', { nodeID: node.getID(), properties: { setDisorders: newDisorders } });
+        // setDisorders rebuilt the entries — re-point the closure at the fresh object for this uuid.
+        var ds = node.getDisorders();
+        for (var k = 0; k < ds.length; k++) { if (ds[k].uuid === duuid) { disorder = ds[k]; break; } }
+        render();
+      });
+      li.insert(toggle);
+    });
   },
 
   _setFieldValue : {
@@ -829,6 +999,8 @@ var NodeMenu = Class.create({
           });
         }
         target._silent = false;
+        // F1d: give each recorded disorder an affected/carrier toggle, bound by uuid to the node.
+        _this._decorateDisorderStatuses(container);
       }
     },
     'hpo-picker' : function (container, values) {

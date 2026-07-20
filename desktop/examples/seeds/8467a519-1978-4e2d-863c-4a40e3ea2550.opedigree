@@ -88,9 +88,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Down__syndrome"
+            {
+              "uuid": "d1",
+              "name": "Down syndrome",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "proband": true,
           "fName": "Child2"
         }

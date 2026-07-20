@@ -145,7 +145,9 @@ var DIRTY_EVENTS = [
   'pedigree:person:newsibling',
   'pedigree:person:newpartnerandchild',
   'pedigree:partnership:newchild',
-  'pedigree:legend:color-changed'
+  'pedigree:legend:color-changed',
+  'pedigree:disorder:renamed',
+  'pedigree:disorder:statuschanged'
 ];
 
 /**

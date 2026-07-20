@@ -63,3 +63,10 @@ dist/
 
 # e2e test report (generated)
 test/e2e/report/
+
+# Archived dev-tool generated output (regenerable)
+desktop/examples/tools/*-out/
+desktop/examples/stress-out/
+
+# local editor
+.obsidian/

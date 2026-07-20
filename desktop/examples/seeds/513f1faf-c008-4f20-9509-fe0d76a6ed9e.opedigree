@@ -25,7 +25,13 @@
         "id": 0,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Victoria"
         },
         "outedges": [
@@ -153,7 +159,13 @@
         "id": 11,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Alice"
         },
         "outedges": [
@@ -195,9 +207,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -213,7 +228,13 @@
         "id": 17,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Beatrice"
         },
         "outedges": [
@@ -252,7 +273,13 @@
         "id": 21,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Irene"
         },
         "outedges": [
@@ -273,9 +300,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -286,7 +316,13 @@
         "id": 24,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Alix"
         },
         "outedges": [
@@ -313,7 +349,13 @@
         "id": 27,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Ena"
         },
         "outedges": [
@@ -327,9 +369,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -341,9 +386,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -354,7 +402,13 @@
         "id": 30,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "AliceAlbany"
         },
         "outedges": [
@@ -375,9 +429,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -396,9 +453,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -430,7 +490,13 @@
         "id": 38,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "carrier"
+            }
+          ],
           "fName": "Anastasia"
         }
       },
@@ -439,9 +505,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -454,9 +523,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -496,9 +568,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],
@@ -517,9 +592,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Hemophilia__B"
+            {
+              "uuid": "d1",
+              "name": "Hemophilia B",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "F9"
           ],

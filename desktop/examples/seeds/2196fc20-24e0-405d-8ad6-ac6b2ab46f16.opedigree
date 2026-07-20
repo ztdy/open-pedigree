@@ -25,7 +25,13 @@
         "id": 0,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "I-1"
         },
         "outedges": [
@@ -38,7 +44,13 @@
         "id": 1,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "I-2"
         },
         "outedges": [
@@ -99,7 +111,13 @@
         "id": 6,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-2"
         },
         "outedges": [
@@ -112,7 +130,13 @@
         "id": 7,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-4"
         },
         "outedges": [
@@ -125,7 +149,13 @@
         "id": 8,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-6"
         },
         "outedges": [
@@ -138,7 +168,13 @@
         "id": 9,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-8"
         },
         "outedges": [
@@ -158,7 +194,13 @@
         "id": 11,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-2"
         },
         "outedges": [
@@ -178,7 +220,13 @@
         "id": 13,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-4"
         },
         "outedges": [
@@ -198,7 +246,13 @@
         "id": 15,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-6"
         },
         "outedges": [
@@ -218,7 +272,13 @@
         "id": 17,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-8"
         },
         "outedges": [
@@ -231,7 +291,13 @@
         "id": 18,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-9"
         },
         "outedges": [
@@ -251,7 +317,13 @@
         "id": 20,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-11"
         },
         "outedges": [
@@ -272,9 +344,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],
@@ -287,9 +362,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],
@@ -308,9 +386,12 @@
         "prop": {
           "gender": "U",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],
@@ -323,9 +404,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],
@@ -344,9 +428,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],
@@ -359,9 +446,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Microcephaly"
+            {
+              "uuid": "d1",
+              "name": "Microcephaly",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "WDR62"
           ],

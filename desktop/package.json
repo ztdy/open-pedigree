@@ -1,7 +1,7 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "0.1.14",
+  "version": "0.2.0",
   "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
@@ -46,12 +46,14 @@
     "files": [
       "main.js",
       "preload.js",
+      "downloadGuard.js",
       "documentStore.js",
       "importDetect.js",
       "libraryConfig.js",
       "offlineData.js",
       "updater.js",
       "i18n.js",
+      "userGuide.js",
       "seedExamples.js",
       "library.html",
       "data/**/*",

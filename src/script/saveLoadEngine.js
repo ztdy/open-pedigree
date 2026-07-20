@@ -145,7 +145,9 @@ var SaveLoadEngine = Class.create( {
       },
       onComplete: function() {
         if (!didLoadData) {
-          // If load failed, just open templates
+          // Load failed / no data: fire load:finish so listeners that armed on load:start (e.g. the
+          // disorder legend's repaint suppression) are released, then open the template picker.
+          document.fire('pedigree:load:finish');
           new TemplateSelector(true);
         }
       }
@@ -176,6 +178,9 @@ var SaveLoadEngine = Class.create( {
         gene:     editor.getGeneLegend().getAllColors(),
         hpo:      editor.getHPOLegend().getAllColors()
       };
+      // NOTE: fill PATTERNS are NOT persisted. They are a deterministic, conflict-free function of
+      // the set of diseases present (see disorderLegend.getObjectPattern), so reopening the same
+      // pedigree reproduces the same assignment without a stored map.
       return JSON.stringify(obj);
     } catch (e) {
       return jsonString;

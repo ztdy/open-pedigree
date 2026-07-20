@@ -38,10 +38,17 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer",
-            "Ovarian__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            },
+            {
+              "uuid": "d2",
+              "name": "Ovarian cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -178,9 +185,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -197,9 +207,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Prostate__cancer"
+            {
+              "uuid": "d3",
+              "name": "Prostate cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -216,9 +229,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Ovarian__cancer"
+            {
+              "uuid": "d2",
+              "name": "Ovarian cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -242,8 +258,8 @@
         "id": 16,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
-          "fName": "II-9"
+          "fName": "II-9",
+          "presymptomatic": true
         },
         "outedges": [
           {
@@ -256,9 +272,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -285,10 +304,17 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer",
-            "Ovarian__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            },
+            {
+              "uuid": "d2",
+              "name": "Ovarian cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -311,8 +337,8 @@
         "id": 21,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
-          "fName": "III-8"
+          "fName": "III-8",
+          "presymptomatic": true
         },
         "outedges": [
           {
@@ -324,8 +350,8 @@
         "id": 22,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
-          "fName": "III-10"
+          "fName": "III-10",
+          "presymptomatic": true
         },
         "outedges": [
           {
@@ -337,8 +363,8 @@
         "id": 23,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
-          "fName": "III-12"
+          "fName": "III-12",
+          "presymptomatic": true
         },
         "outedges": [
           {
@@ -351,9 +377,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -370,9 +399,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -383,8 +415,8 @@
         "id": 26,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
-          "fName": "IV-2"
+          "fName": "IV-2",
+          "presymptomatic": true
         }
       },
       {
@@ -398,8 +430,8 @@
         "id": 28,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
-          "fName": "IV-4"
+          "fName": "IV-4",
+          "presymptomatic": true
         }
       },
       {
@@ -414,9 +446,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Breast__cancer"
+            {
+              "uuid": "d1",
+              "name": "Breast cancer",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "BRCA1"
           ],
@@ -427,8 +462,8 @@
         "id": 31,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
-          "fName": "IV-7"
+          "fName": "IV-7",
+          "presymptomatic": true
         }
       },
       {
@@ -449,8 +484,8 @@
         "id": 34,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
-          "fName": "IV-10"
+          "fName": "IV-10",
+          "presymptomatic": true
         }
       },
       {

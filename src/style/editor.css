@@ -206,40 +206,124 @@
 }
 .legend-box {
   background: #FFF;
-  border-radius: 0 0 0 4px;
-  padding: .5em .5em .5em 1em;
+  /* NSGC requires the legend to define fill/shading; make it a distinct, legible panel rather than
+   * a borderless white box that dissolves into the white canvas. 1px border + soft shadow. */
+  border: 1px solid #b9b9b9;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  padding: 0 0 .4em 0;
+  overflow: hidden;
 }
 .legend-container {
   top:5px;
   position: absolute;
   right: 0;
   z-index: 10000;
-  min-width: 140px;
-  max-width: 250px;
+  min-width: 150px;
+  max-width: 260px;
 }
 .legend-box .legend-title {
-  font-size: 1.1em;
+  font-size: 1.05em;
+  font-weight: bold;
   margin: 0 0 0.3em;
+  padding: .3em .6em;
+  /* light title bar so the legend reads as a titled panel */
+  background: #eef1f4;
+  border-bottom: 1px solid #d7dbe0;
 }
 .legend-box .disorder-list {
   list-style-type: none;
   margin: 0;
-  padding: 0;
+  padding: 0 .6em;
 }
 
+/* One-click "family" quick-add chips under each clinical picker: the disorders/genes/phenotypes
+ * already used elsewhere in this pedigree, so you can add them to another member without retyping. */
+.family-quick-add { margin: 4px 0 2px; line-height: 1.9; }
+.family-quick-add:empty { margin: 0; }
+.family-quick-add-label { font-size: 11px; color: #7a828c; margin-right: 6px; }
+.family-quick-add-chip {
+  display: inline-block; font-size: 11px; padding: 1px 8px; margin: 0 4px 3px 0;
+  border: 1px solid #b9c6d6; border-radius: 20px; background: #eef3f8; color: #2f5170;
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+.family-quick-add-chip:hover { background: #2f6fed; color: #fff; border-color: #2f6fed; }
 .disorder-color {
+  /* Hosts an inline 16px SVG swatch = disease colour + its fill pattern (rendered by the legend,
+   * matching the on-canvas fill). No own border/background: the SVG carries both. */
   display: inline-block;
-  width: .8em;
-  height: .8em;
+  width: 16px;
+  height: 16px;
   margin: 0 .5em .2em 0;
-  border-radius: .4em;
-  background-color: #DDD;
+  line-height: 0;
   vertical-align: middle;
 }
+.disorder-color svg { display: block; }
 .disorder-cases-container {
   font-size: .8em;
   font-style: italic;
   color: #777;
+}
+/* The "fill key" row(s): a solid block = affected, a hatched block = carrier. Rendered once at the
+ * top of the disorder legend so the fill convention is defined, per NSGC general instruction #3. */
+.legend-box .fill-key {
+  margin: .35em 0 .1em;
+  padding: 0;
+  list-style-type: none;
+  border-bottom: 1px dashed #d7dbe0;
+  padding-bottom: .3em;
+}
+.legend-box .fill-key li {
+  font-size: .82em;
+  color: #444;
+  line-height: 1.5em;
+}
+.fill-key .fill-key-swatch {
+  /* Hosts an inline 16px SVG swatch (affected = sparse texture, carrier = dense stripes), rendered
+   * from the same generator as the disease swatches and the canvas. */
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 0 .5em .2em 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+.fill-key .fill-key-swatch svg { display: block; }
+/* A disorder legend row flagged as an auto-generated placeholder awaiting a real name (D5). */
+.legend-box .disorder.needs-repair .disorder-name {
+  color: #b3540f;
+  font-style: italic;
+}
+.legend-box .disorder .repair-flag {
+  margin-left: .35em;
+  cursor: pointer;
+  color: #b3540f;
+  font-size: .8em;
+}
+.legend-box .disorder-name {
+  cursor: text;
+}
+/* F1d: per-disorder affected/carrier toggle inside the disease picker's accepted list. */
+.disorder-status-toggle {
+  display: inline-block;
+  margin-left: .5em;
+  padding: 0 .45em;
+  font-size: .78em;
+  line-height: 1.5em;
+  border-radius: 3px;
+  cursor: pointer;
+  vertical-align: middle;
+  border: 1px solid rgba(0,0,0,.25);
+  user-select: none;
+}
+.disorder-status-toggle.affected {
+  background: #e9eef5;
+  color: #2b4a6f;
+}
+.disorder-status-toggle.carrier {
+  /* hatch hint, "/" direction (135deg) matching the on-canvas carrier fill */
+  background: repeating-linear-gradient(135deg, #9aa4b3 0, #9aa4b3 2px, #eef2f7 2px, #eef2f7 5px);
+  color: #2b4a6f;
 }
 /* ===========================================
  * NODE MENU

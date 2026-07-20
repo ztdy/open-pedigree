@@ -5,7 +5,7 @@ import { ChildlessBehaviorVisuals} from 'pedigree/view/abstractNodeVisuals';
 import PersonHoverbox from 'pedigree/view/personHoverbox';
 import ReadOnlyHoverbox from 'pedigree/view/readonlyHoverbox';
 import PedigreeEditorParameters from 'pedigree/pedigreeEditorParameters';
-import { getElementHalfHeight, sector } from 'pedigree/view/graphicHelpers';
+import { getElementHalfHeight, sector, drawSectorHatch, darkenColor } from 'pedigree/view/graphicHelpers';
 import getAge from 'pedigree/view/ageCalc';
 import I18n from 'pedigree/i18n';
 
@@ -428,18 +428,46 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      */
   updateDisorderShapes: function() {
     this._disorderShapes && this._disorderShapes.remove();
-    var colors = this.getNode().getAllNodeColors();
-    if (colors.length == 0) {
+    this._removeDisorderClips();
+    // F1c: one entry per disorder, carrying the legend colour AND the per-condition status.
+    // 'affected' -> flat solid fill; 'carrier' -> solid fill + overlaid diagonal HATCH LINES of a
+    // dark shade of the same colour (NSGC 2022 §4.5: the retired centre dot is replaced by a
+    // per-subsection fill pattern, defined in the legend).
+    var fills = this.getNode().getDisorders().map(function(d) {
+      return {
+        color: editor.getDisorderLegend().getObjectColor(d.uuid),
+        status: d.status,
+        pattern: editor.getDisorderLegend().getObjectPattern(d.uuid)   // per-disease fill pattern
+      };
+    });
+    if (fills.length == 0) {
       return;
     }
 
-    var gradient = function(color, angle) {
-      var hsb = Raphael.rgb2hsb(color),
-        darker = Raphael.hsb2rgb(hsb['h'],hsb['s'],hsb['b']-.25)['hex'];
-      return angle +'-'+darker+':0-'+color+':100';
-    };
+    // NSGC pedigrees use flat solid fills, not gradients. The old dark->base linear
+    // gradient washed the colour out and made adjacent condition colours hard to tell
+    // apart (0.2 fill rework). Fill each sector with its flat legend colour.
     var disorderShapes = editor.getPaper().set();
+    var clipIds = [];
+    // NSGC 2022 §4.5 (fill-pattern scheme), so it reads even in BLACK & WHITE:
+    //   every disease carries its own fill PATTERN (stripe angle) — so two DIFFERENT diseases are
+    //   distinguishable by pattern regardless of state (fixes "two affected diseases look identical
+    //   in B&W"). AFFECTED vs CARRIER of the SAME disease is told apart by the sector BACKGROUND:
+    //     AFFECTED = the disease COLOUR behind the pattern (a shaded, filled subsection);
+    //     CARRIER  = NO background fill (white) behind the same pattern.
+    // Pattern is real clipped geometry (dark shade of the disease colour) so it survives SVG/PDF
+    // export and shows on the white carrier fill and the coloured affected fill alike.
+    var hatchSector = function(sectorEl, f) {
+      var h = drawSectorHatch(editor.getPaper(), sectorEl, f.color, f.pattern, 'carrier');
+      if (h) {
+        for (var li = 0; li < h.lines.length; li++) {
+          disorderShapes.push(h.lines[li]);
+        }
+        clipIds.push(h.clipId);
+      }
+    };
     var delta, color;
+    var colors = fills;   // keep the loop bounds/reads below unchanged (length + per-index)
 
     if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
       var radius = PedigreeEditorParameters.attributes.radius;
@@ -461,8 +489,11 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
           corner = ['L', this.getX(), this.getY()-height];
         }
         var slice = editor.getPaper().path(['M', x1, y1, corner,'L', x2, y2, 'L',this.getX(), this.getY(),'z']);
-        color = gradient(colors[k], 70);
-        disorderShapes.push(slice.attr({fill: color, 'stroke-width':.5, stroke: 'none' }));
+        // carrier subsection = NO colour behind the pattern (white); affected = a DEEPER shade of the
+        // disease colour (the palette is pale, so a pale fill read too close to the white carrier).
+        slice.attr({fill: (colors[k].status === 'carrier') ? '#ffffff' : darkenColor(colors[k].color, 0.7), 'stroke-width':.5, stroke: 'none' });
+        disorderShapes.push(slice);
+        hatchSector(slice, colors[k]);
         x1 = x2;
         y1 = y2;
       }
@@ -481,19 +512,46 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
         radius *= 1.155;
       }                     // TODO: magic number hack: due to a Raphael transform bug (?) just using correct this._shapeRadius does not work
 
+      var sectorEls = [];
       for(var i = 0; i < colors.length; i++) {
-        color = gradient(colors[i], (i * disorderAngle)+delta);
-        disorderShapes.push(sector(editor.getPaper(), this.getX(), this.getY(), radius,
-          this.getNode().getGender(), i * disorderAngle, (i+1) * disorderAngle, color));
+        color = colors[i].color;
+        // carrier subsection = NO colour behind the pattern (white); affected = a DEEPER shade of the
+        // disease colour (the palette is pale, so a pale fill read too close to the white carrier).
+        var bg = (colors[i].status === 'carrier') ? '#ffffff' : darkenColor(color, 0.7);
+        var sec = sector(editor.getPaper(), this.getX(), this.getY(), radius,
+          this.getNode().getGender(), i * disorderAngle, (i+1) * disorderAngle, bg);
+        // Sector border between adjacent slices — applied HERE (per sector), not to the whole set,
+        // so it can't overwrite the hatch line strokes added below.
+        sec.attr(colors.length < 2 ? {stroke: 'none'} : {stroke: '#595959', 'stroke-width': .03});
+        sectorEls.push(sec);
+        disorderShapes.push(sec);
       }
-
-      (disorderShapes.length < 2) ? disorderShapes.attr('stroke', 'none') : disorderShapes.attr({stroke: '#595959', 'stroke-width':.03});
+      for(var j = 0; j < sectorEls.length; j++) {
+        hatchSector(sectorEls[j], colors[j]);
+      }
       if(this.getNode().isProband()) {
         disorderShapes.transform(['...s', 1.04, 1.04, this.getX(), this.getY()]);
       }
     }
     this._disorderShapes = disorderShapes;
+    this._disorderClipIds = clipIds;
     this._disorderShapes.flatten().insertAfter(this.getGenderGraphics().flatten());
+  },
+
+  // Remove the per-carrier-sector clipPath <clipPath> elements this node added to <defs> on the
+  // previous draw (the hatch lines themselves are Raphael elements removed with _disorderShapes).
+  _removeDisorderClips: function() {
+    if (!this._disorderClipIds || !this._disorderClipIds.length) {
+      return;
+    }
+    var svg = editor.getPaper() && editor.getPaper().canvas;
+    for (var i = 0; i < this._disorderClipIds.length; i++) {
+      var el = svg && svg.querySelector && svg.querySelector('#' + this._disorderClipIds[i]);
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    }
+    this._disorderClipIds = null;
   },
 
   /**
@@ -673,49 +731,39 @@ var PersonVisuals = Class.create(AbstractPersonVisuals, {
      * @method updateCarrierGraphic
      */
   updateCarrierGraphic: function() {
-    var x;
-    var y;
-
     this._carrierGraphic && this._carrierGraphic.remove();
-    var status = this.getNode().getCarrierStatus();
 
-    if (status != '' && status != 'affected') {
-      if (status == 'carrier') {
-        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
-          x = this.getX();
-          y = this.getY() - this._radius/2;
-        } else {
-          x = this.getX();
-          y = this.getY();
-        }
-        this._carrierGraphic = editor.getPaper().circle(x, y, PedigreeEditorParameters.attributes.carrierDotRadius).attr(PedigreeEditorParameters.attributes.carrierShape);
-      } else if (status == 'presymptomatic') {
-        if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
-          this._carrierGraphic = null;
-          return;
-        }
-        editor.getPaper().setStart();
-        var startX = (this.getX()-PedigreeEditorParameters.attributes.presymptomaticShapeWidth/2);
-        var startY = this.getY()-this._radius;
-        editor.getPaper().rect(startX, startY, PedigreeEditorParameters.attributes.presymptomaticShapeWidth, this._radius*2).attr(PedigreeEditorParameters.attributes.presymptomaticShape);
-        if (this.getNode().getGender() == 'U') {
-          editor.getPaper().path('M '+startX + ' ' + startY +
-                                           'L ' + (this.getX()) + ' ' + (this.getY()-this._radius*1.1) +
-                                           'L ' + (startX + PedigreeEditorParameters.attributes.presymptomaticShapeWidth) + ' ' + (startY) + 'Z').attr(PedigreeEditorParameters.attributes.presymptomaticShape);
-          var endY = this.getY()+this._radius;
-          editor.getPaper().path('M '+startX + ' ' + endY +
-                                           'L ' + (this.getX()) + ' ' + (this.getY()+this._radius*1.1) +
-                                           'L ' + (startX + PedigreeEditorParameters.attributes.presymptomaticShapeWidth) + ' ' + endY + 'Z').attr(PedigreeEditorParameters.attributes.presymptomaticShape);
-        }
-        this._carrierGraphic = editor.getPaper().setFinish();
-      }
-      if (editor.isReadOnlyMode()) {
-        this._carrierGraphic.toFront();
-      } else {
-        this._carrierGraphic.insertBefore(this.getHoverBox().getFrontElements());
-      }
-    } else {
+    // F1b: the only symbol-level carrier graphic left is the pre-symptomatic vertical line. The old
+    // "carrier" centre dot is gone — carrier is a per-disorder state (drawn as a hatched sector,
+    // F1c), not a whole-symbol mark. Driven by the boolean flag now, not the carrierStatus enum.
+    if (!this.getNode().getPresymptomatic()) {
       this._carrierGraphic = null;
+      return;
+    }
+    if (this.getNode().getLifeStatus() == 'aborted' || this.getNode().getLifeStatus() == 'miscarriage' || this.getNode().getLifeStatus() == 'ectopic') {
+      this._carrierGraphic = null;
+      return;
+    }
+
+    editor.getPaper().setStart();
+    var startX = (this.getX()-PedigreeEditorParameters.attributes.presymptomaticShapeWidth/2);
+    var startY = this.getY()-this._radius;
+    editor.getPaper().rect(startX, startY, PedigreeEditorParameters.attributes.presymptomaticShapeWidth, this._radius*2).attr(PedigreeEditorParameters.attributes.presymptomaticShape);
+    if (this.getNode().getGender() == 'U') {
+      editor.getPaper().path('M '+startX + ' ' + startY +
+                                       'L ' + (this.getX()) + ' ' + (this.getY()-this._radius*1.1) +
+                                       'L ' + (startX + PedigreeEditorParameters.attributes.presymptomaticShapeWidth) + ' ' + (startY) + 'Z').attr(PedigreeEditorParameters.attributes.presymptomaticShape);
+      var endY = this.getY()+this._radius;
+      editor.getPaper().path('M '+startX + ' ' + endY +
+                                       'L ' + (this.getX()) + ' ' + (this.getY()+this._radius*1.1) +
+                                       'L ' + (startX + PedigreeEditorParameters.attributes.presymptomaticShapeWidth) + ' ' + endY + 'Z').attr(PedigreeEditorParameters.attributes.presymptomaticShape);
+    }
+    this._carrierGraphic = editor.getPaper().setFinish();
+
+    if (editor.isReadOnlyMode()) {
+      this._carrierGraphic.toFront();
+    } else {
+      this._carrierGraphic.insertBefore(this.getHoverBox().getFrontElements());
     }
   },
 

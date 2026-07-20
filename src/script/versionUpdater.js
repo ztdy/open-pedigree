@@ -1,3 +1,5 @@
+import { migrateDisordersToStatusModel } from 'pedigree/model/disorderStatusMigration';
+
 /*
  * VersionUpdater is responsible for updating pedigree JSON represenatation to the current version.
  */
@@ -5,7 +7,10 @@ var VersionUpdater = Class.create( {
   initialize: function() {
     this.availableUpdates = [ { 'comment':    'group node comment representation',
       'introduced': 'May2014',
-      'func':       'updateGroupNodeComments'} ];
+      'func':       'updateGroupNodeComments'},
+    { 'comment':    'per-condition disorder status model (F1b)',
+      'introduced': '0.2',
+      'func':       'updateDisorderStatusModel'} ];
   },
 
   updateToCurrentVersion: function(pedigreeJSON) {
@@ -21,6 +26,15 @@ var VersionUpdater = Class.create( {
     }
 
     return pedigreeJSON;
+  },
+
+  /* Migrates the old symbol-level carrier model to the per-condition status model (F1b).
+   * The transform is a pure function in model/disorderStatusMigration.js; it already honours the
+   * VersionUpdater contract (returns null when there is nothing to migrate), so this is a thin
+   * adapter that just exposes it as an update method.
+   */
+  updateDisorderStatusModel: function(pedigreeJSON) {
+    return migrateDisordersToStatusModel(pedigreeJSON);
   },
 
   /* - assumes input is in the pre-May-2014 format

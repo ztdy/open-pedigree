@@ -2,6 +2,7 @@ import PDFDocument from 'vendor/pdfkit/pdfkit.standalone';
 import SVGtoPDF from 'vendor/pdfkit/svg-to-pdfkit';
 import blobStream from 'vendor/pdfkit/blob-stream';
 import GA4GHFHIRConverter from 'pedigree/GA4GHFHIRConverter';
+import { darkenColor, hatchSpecs } from 'pedigree/view/graphicHelpers';
 
 var PedigreeExport = function () {
 };
@@ -48,6 +49,36 @@ function loadCJKFont() {
  *       1 unaffected
  *       2 affected
  */
+/*
+ * PED affection column (-9 missing, 1 unaffected, 2 affected) from a person's stored properties.
+ * Tolerates the F1b per-condition model and the legacy carrierStatus model — see exportAsPED.
+ */
+PedigreeExport._pedAffection = function(props) {
+  var disorders = Array.isArray(props.disorders) ? props.disorders : [];
+  var objDisorders = disorders.filter(function(d) { return d && typeof d === 'object'; });
+  var cs = props.carrierStatus;
+
+  var affected, knownStatus;
+  if (objDisorders.length > 0) {
+    // new model: status lives on each disorder
+    affected = objDisorders.some(function(d) { return d.status === 'affected'; });
+    knownStatus = true;
+  } else if (disorders.length > 0) {
+    // legacy: a listed (string-id) disorder means affected, unless flagged a plain carrier/presym
+    affected = (cs !== 'carrier' && cs !== 'presymptomatic');
+    knownStatus = true;
+  } else {
+    // no disorders: affected only if the legacy enum said so; carrier/presym are a known status
+    affected = (cs === 'affected');
+    knownStatus = props.presymptomatic || cs === 'carrier' || cs === 'presymptomatic' || cs === 'affected';
+  }
+
+  if (affected) {
+    return 2;
+  }
+  return knownStatus ? 1 : -9;
+};
+
 PedigreeExport.exportAsPED = function(pedigree, idGenerationPreference) {
   var output = '';
 
@@ -84,16 +115,17 @@ PedigreeExport.exportAsPED = function(pedigree, idGenerationPreference) {
 
     output += (PedigreeExport.pedSex(pedigree.GG.properties[i]) + ' ');
 
-    var status = -9; //missing
-    if (pedigree.GG.properties[i].hasOwnProperty('carrierStatus')) {
-      if (pedigree.GG.properties[i]['carrierStatus'] == 'affected' ||
-               pedigree.GG.properties[i]['carrierStatus'] == 'carrier'  ||
-               pedigree.GG.properties[i]['carrierStatus'] == 'presymptomatic') {
-        status = 2;
-      } else {
-        status = 1;
-      }
-    }
+    // F1b: affection comes from the per-condition model. Any disorder with status 'affected' makes
+    // the individual affected (2). A pure carrier or a pre-symptomatic individual counts as
+    // unaffected (1) — PED has no carrier slot (design §6/§8). No disorder and not pre-symptomatic
+    // leaves the status unknown/missing (-9).
+    //
+    // Tolerates BOTH property shapes: the migrated new model ({uuid,name,status} disorders +
+    // presymptomatic bool) and the legacy one (string-id disorders + a carrierStatus enum), because
+    // these stored properties are not guaranteed to have been through the VersionUpdater on every
+    // path (e.g. a graph loaded straight via fromJSON).
+    var props = pedigree.GG.properties[i];
+    var status = PedigreeExport._pedAffection(props);
     output += status + '\n';
   }
 
@@ -189,7 +221,7 @@ PedigreeExport.exportAsSVG = function(pedigree, privacySetting = 'all') {
 
 
 
-PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pageSize = 'A4', layout = 'landscape', legendPos = 'TopRight'){
+PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pageSize = 'A4', layout = 'landscape', legendPos = 'TopRight', fileName = 'open-pedigree.pdf'){
   var pedigreeImage = PedigreeExport.exportAsSVG(pedigree, privacySetting);
   var cjkFont = await loadCJKFont();
 
@@ -218,14 +250,19 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
     if (h2Array){
       legendSection.heading = h2Array[0].textContent;
     }
-    for (let li of c.getElementsByTagName('li')){
+    // Only real legend rows (li.disorder). The fill-key rows (li under .fill-key) are handled
+    // once, below, as an explicit "solid = affected / hatched = carrier" key.
+    for (let li of c.querySelectorAll('li.disorder')){
+      let fill = 'solid';
+      let pattern = null;
       let colourArray = li.getElementsByClassName('disorder-color');
-      if (colourArray){
-        colour = colourArray[0].style.backgroundColor;
-        if (colour.startsWith('#')){
-          // already hex
-        } else if (colour.startsWith('rgb(')){
-          // rgb
+      if (colourArray && colourArray.length){
+        let swatch = colourArray[0];
+        // Prefer the robust data-* hints set by the legend; fall back to the computed style.
+        fill = swatch.getAttribute('data-fill') || 'solid';
+        pattern = swatch.getAttribute('data-pattern');   // the disease's fill-pattern style, if any
+        colour = swatch.getAttribute('data-color') || swatch.style.backgroundColor;
+        if (colour && colour.startsWith('rgb(')){
           let colourSplit = rgbRegex.exec(colour);
           if (colourSplit != null){
             colour = '#' + parseInt(colourSplit[1]).toString(16) + parseInt(colourSplit[2]).toString(16) + parseInt(colourSplit[3]).toString(16);
@@ -233,16 +270,26 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
         }
       }
       let nameArray = li.getElementsByClassName('disorder-name');
-      if (nameArray){
+      if (nameArray && nameArray.length){
         name = nameArray[0].textContent;
       }
       let casesArray = li.getElementsByClassName('disorder-cases');
-      if (casesArray){
+      if (casesArray && casesArray.length){
         cases = casesArray[0].textContent;
       }
 
-      legendSection.items.push({colour: colour, name: name, cases: cases});
+      legendSection.items.push({colour: colour, name: name, cases: cases, fill: fill, pattern: pattern});
       itemCount++;
+    }
+    // A "fill key" for the disorder legend so the print defines the fill convention (NSGC). Only
+    // the disorder legend has a .fill-key block, which distinguishes it from gene/HPO legends.
+    let fkLis = c.querySelectorAll('.fill-key li');
+    if (fkLis && fkLis.length >= 2 && legendSection.items.length){
+      legendSection.fillKey = {
+        affected: fkLis[0].textContent.trim(),
+        carrier: fkLis[1].textContent.trim()
+      };
+      itemCount += 2;
     }
   }
 
@@ -266,9 +313,7 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
   let stream = doc.pipe(blobStream());
   stream.on('finish', function () {
     let blob = stream.toBlob('application/pdf');
-    //   // new FileSaver(blob, 'open-pedigree.pdf');
-    //   navigator.msSaveOrOpenBlob(blob, 'open-pedigree.pdf');
-    saveAs(blob, 'open-pedigree.pdf');
+    saveAs(blob, fileName);
     //   // if (navigator.msSaveOrOpenBlob) {
     //   //   navigator.msSaveOrOpenBlob(blob, 'open-pedigree.pdf');
     //   // } else {
@@ -337,17 +382,59 @@ PedigreeExport.exportAsPDF = async function(pedigree, privacySetting = 'all', pa
   }
 
 
+  // Draw a legend swatch: a SOLID colour square overlaid with the disease's fill PATTERN, using the
+  // SAME hatchSpecs geometry as the canvas + on-screen legend swatch (so all three agree). `style` =
+  // the disease pattern (null -> plain solid); `kind` = 'carrier' (dense) or 'affected' (sparse).
+  // The solid base means the colour still reads if the pattern is ever faint.
+  let drawSwatch = function(x, y, colour, style, kind){
+    doc.save();
+    doc.rect(x, y, swatchSize, swatchSize).fill(colour, 1);
+    doc.restore();
+    if (style){
+      doc.save();
+      doc.rect(x, y, swatchSize, swatchSize).clip();
+      let dark = darkenColor(colour, 0.42);
+      let step = (kind === 'affected') ? swatchSize * 0.5 : swatchSize * 0.28;
+      // 'dots' spacing is multiplied ~2.4x inside hatchSpecs; at this tiny swatch (8pt) that would
+      // leave both densities with a single dot. Use a finer base step for dots so carrier stays
+      // visibly denser than affected here too.
+      if (style === 'dots') { step = (kind === 'affected') ? swatchSize * 0.20 : swatchSize * 0.12; }
+      let specs = hatchSpecs(x, y, swatchSize, swatchSize, style, step);
+      if (style === 'dots'){
+        doc.fillColor(dark);
+        for (let s of specs){ if (s[0] === 'dot'){ doc.circle(s[1], s[2], Math.max(0.4, s[3])).fill(); } }
+      } else {
+        doc.lineWidth((kind === 'affected') ? 0.5 : 0.9).strokeColor(dark);
+        for (let s of specs){ if (s[0] === 'line'){ doc.moveTo(s[1], s[2]).lineTo(s[3], s[4]); } }
+        doc.stroke();
+      }
+      doc.restore();                                   // drop the clip
+    }
+    doc.save();
+    doc.lineWidth(0.4).strokeColor('#555555').rect(x, y, swatchSize, swatchSize).stroke();
+    doc.restore();
+  };
+
   for (let cat of legend){
     doc.save();
     doc.fontSize(14);
     doc.text(cat.heading, xOffset, yOffset, {lineBreak: false});
     yOffset += headingLineHeight;
+    if (cat.fillKey){
+      // Same pattern for both; affected = a DEEP colour behind it, carrier = white behind it.
+      doc.fontSize(9);
+      drawSwatch(xOffset, yOffset + (itemLineHeight - swatchSize) / 2, darkenColor('#9aa0a6', 0.7), 'diag-fwd', 'carrier');   // deep colour + pattern
+      doc.fillColor('#000000').text(cat.fillKey.affected, xOffset + textIndent, yOffset + (itemLineHeight - 9) / 2, {lineBreak: false});
+      yOffset += itemLineHeight;
+      drawSwatch(xOffset, yOffset + (itemLineHeight - swatchSize) / 2, '#ffffff', 'diag-fwd', 'carrier');   // white + pattern
+      doc.fillColor('#000000').text(cat.fillKey.carrier, xOffset + textIndent, yOffset + (itemLineHeight - 9) / 2, {lineBreak: false});
+      yOffset += itemLineHeight;
+    }
     for (let item of cat.items){
-      doc.save();
-      doc.rect(xOffset, yOffset + (itemLineHeight - swatchSize) / 2, swatchSize, swatchSize).fill(item.colour, 1);
-      doc.restore();
+      // Every disease has a pattern now; the disease-row swatch shows its colour + pattern.
+      drawSwatch(xOffset, yOffset + (itemLineHeight - swatchSize) / 2, item.colour, item.pattern, 'carrier');
       doc.fontSize(10);
-      doc.text(item.name + ' (' + item.cases + ')', xOffset + textIndent, yOffset + (itemLineHeight - 10) / 2, {lineBreak: false});
+      doc.fillColor('#000000').text(item.name + ' (' + item.cases + ')', xOffset + textIndent, yOffset + (itemLineHeight - 10) / 2, {lineBreak: false});
       yOffset += itemLineHeight;
     }
     yOffset += catGap;

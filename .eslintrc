@@ -6,6 +6,7 @@
     },
     "extends": "eslint:recommended",
     "parserOptions": {
+        "ecmaVersion": 2018,
         "sourceType": "module"
     },
     "globals": {
@@ -13,7 +14,9 @@
         "editor": true,
         "PhenoTips": true,
         "Raphael": true,
-        "XWiki": true
+        "XWiki": true,
+        "saveAs": true,
+        "saveTextAs": true
     },
     "rules": {
         "brace-style": ["warn", "1tbs"],

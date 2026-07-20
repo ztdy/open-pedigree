@@ -2,6 +2,7 @@ import Controller from 'pedigree/controller';
 import SaveLoadEngine from 'pedigree/saveLoadEngine';
 import View from 'pedigree/view';
 import DynamicPositionedGraph from 'pedigree/model/dynamicGraph';
+import PedigreeValidator from 'pedigree/model/pedigreeValidator';
 import Helpers from 'pedigree/model/helpers';
 import Workspace from 'pedigree/view/workspace';
 import DisorderLegend from 'pedigree/view/disorderLegend';
@@ -123,6 +124,11 @@ var PedigreeEditor = Class.create({
     var exportButton = $('action-export');
     exportButton && exportButton.on('click', function(event) {
       editor.getExportSelector().show();
+    });
+
+    var validateButton = $('action-validate');
+    validateButton && validateButton.on('click', function(event) {
+      editor.validateConsistency();
     });
 
     var closeButton = $('action-close');
@@ -359,6 +365,114 @@ var PedigreeEditor = Class.create({
   },
 
   /**
+     * Runs the ADVISORY consistency checks over the current pedigree and shows a
+     * non-blocking results panel. Opt-in (user clicks "Check consistency"); it never
+     * blocks editing and never mutates the graph. See model/pedigreeValidator.js.
+     * @method validateConsistency
+     */
+  validateConsistency: function() {
+    var findings = PedigreeValidator.validatePedigree(this._collectPersonsForValidation());
+    this._showValidationResults(findings);
+    return findings;
+  },
+
+  // Flatten the live graph into the plain shape the (pure) validator consumes. Every field
+  // is read defensively — any missing/odd value degrades to a "skip" (null/false), which the
+  // validator treats as "no information", keeping the checks sound.
+  _collectPersonsForValidation: function() {
+    var graph = this.getGraph();
+    var view = this.getView();
+    var persons = [];
+    var maxId = graph.getMaxNodeId();
+    var safe = function(fn, dflt) { try { return fn(); } catch (e) { return dflt; } };
+    for (var id = 0; id <= maxId; id++) {
+      if (!graph.isPerson(id)) { continue; }
+      var node = view.getNode(id);
+      if (!node) { continue; }
+      var bd = node.getBirthDate ? node.getBirthDate() : null;
+      var dd = node.getDeathDate ? node.getDeathDate() : null;
+      persons.push({
+        id: id,
+        sex: node.getGender ? node.getGender() : 'U',
+        asab: node.getAssignedSexAtBirth ? node.getAssignedSexAtBirth() : '',
+        birthYear: (bd && bd.getFullYear) ? bd.getFullYear() : null,
+        deathYear: (dd && dd.getFullYear) ? dd.getFullYear() : null,
+        lifeStatus: node.getLifeStatus ? node.getLifeStatus() : 'alive',
+        adopted: safe(function() { return !!graph.isAdopted(id); }, false),
+        monozygotic: node.getMonozygotic ? !!node.getMonozygotic() : false,
+        twinGroup: safe(function() { var t = graph.getTwinGroupId(id); return (t === undefined ? null : t); }, null),
+        parents: safe(function() { return graph.DG.GG.getParents(id) || []; }, []),
+        childrenCount: safe(function() { return graph.getAllChildren(id).length; }, 0)
+      });
+    }
+    return persons;
+  },
+
+  // Non-blocking results panel (bottom-right). Localised per finding code; each row can be
+  // clicked to centre the involved node. Styles are inline (the editor CSP allows
+  // 'unsafe-inline' for style-src) to avoid a stylesheet dependency.
+  _showValidationResults: function(findings) {
+    var existing = $('validation-results');
+    // stopObserving on the panel AND every descendant (rows/close button) before remove() so
+    // Prototype's Event.cache doesn't retain handlers for the detached nodes across repeated runs
+    // (remove() only detaches the DOM; it does not release observers).
+    if (existing) {
+      existing.select('*').invoke('stopObserving');
+      existing.stopObserving();
+      existing.remove();
+    }
+
+    var MSG = {
+      'death-before-birth': I18n.t('Death year is before the birth year.'),
+      'parent-younger-than-child': I18n.t('A parent is recorded as younger than their child.'),
+      'pregnancy-loss-has-children': I18n.t('A non-live-birth pregnancy is recorded as a parent.'),
+      'monozygotic-mixed-sex': I18n.t('Monozygotic (identical) twins are recorded with different sex assigned at birth.')
+    };
+
+    var panel = new Element('div', {'id': 'validation-results'});
+    panel.setStyle({ position: 'fixed', right: '16px', bottom: '16px', width: '330px',
+      maxHeight: '55%', overflowY: 'auto', background: '#ffffff', color: '#222',
+      border: '1px solid #cfd3d8', borderRadius: '8px', boxShadow: '0 2px 14px rgba(0,0,0,.18)',
+      zIndex: '1000', fontFamily: 'sans-serif', fontSize: '13px' });
+
+    var header = new Element('div');
+    header.setStyle({ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '10px 12px', borderBottom: '1px solid #eee', fontWeight: '600' });
+    header.insert(new Element('span').update(I18n.t('Consistency check')));
+    var closeBtn = new Element('span').update('×');
+    closeBtn.setStyle({ cursor: 'pointer', fontSize: '18px', lineHeight: '1', color: '#888', padding: '0 2px' });
+    closeBtn.on('click', function() { panel.remove(); });
+    header.insert(closeBtn);
+    panel.insert(header);
+
+    if (!findings || !findings.length) {
+      var ok = new Element('div').update('✓ ' + I18n.t('No issues found.'));
+      ok.setStyle({ padding: '14px 12px', color: '#2e7d32' });
+      panel.insert(ok);
+    } else {
+      var intro = new Element('div').update(I18n.t('These are advisory only — nothing was changed.'));
+      intro.setStyle({ padding: '8px 12px', color: '#777', fontSize: '12px' });
+      panel.insert(intro);
+      var list = new Element('div');
+      for (var i = 0; i < findings.length; i++) {
+        (function(f) {
+          var row = new Element('div').update(MSG[f.code] || f.message);
+          row.setStyle({ padding: '9px 12px', borderTop: '1px solid #f0f0f0', lineHeight: '1.4' });
+          if (f.ids && f.ids.length) {
+            row.setStyle({ cursor: 'pointer' });
+            row.on('mouseover', function() { row.setStyle({ background: '#f6f8fa' }); });
+            row.on('mouseout', function() { row.setStyle({ background: '#ffffff' }); });
+            row.on('click', function() { try { editor.getWorkspace().centerAroundNode(f.ids[0], true); } catch (e) {} });
+          }
+          list.insert(row);
+        })(findings[i]);
+      }
+      panel.insert(list);
+    }
+    $('body').insert(panel);
+  },
+
+  /**
      * Returns true if any of the node menus are visible
      * (since some UI interactions should be disabled while menu is active - e.g. mouse wheel zoom)
      *
@@ -463,18 +577,15 @@ var PedigreeEditor = Class.create({
         'function' : 'setConsultand'
       },
       {
-        'name' : 'carrier',
-        'label' : 'Carrier status',
-        'type' : 'radio',
+        // F1: affected/carrier is per-disorder (set on each disease in the picker below). The only
+        // symbol-level clinical state left is pre-symptomatic (dominant, gene-positive, not yet
+        // affected — the vertical line). The old 4-value "Carrier status" radio was removed because
+        // it flattened a mixed affected-X / carrier-Y patient to a single status.
+        'name' : 'presymptomatic',
+        'label' : 'Pre-symptomatic (gene-positive, not yet affected)',
+        'type' : 'checkbox',
         'tab': 'Clinical',
-        'values' : [
-          { 'actual' : '', 'displayed' : 'Not affected' },
-          { 'actual' : 'carrier', 'displayed' : 'Carrier' },
-          { 'actual' : 'affected', 'displayed' : 'Affected' },
-          { 'actual' : 'presymptomatic', 'displayed' : 'Pre-symptomatic' }
-        ],
-        'default' : '',
-        'function' : 'setCarrierStatus'
+        'function' : 'setPresymptomatic'
       },
       {
         'name' : 'evaluated',

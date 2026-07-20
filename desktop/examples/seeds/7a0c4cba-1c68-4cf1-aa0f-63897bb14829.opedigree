@@ -62,9 +62,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Marfan__syndrome"
+            {
+              "uuid": "d1",
+              "name": "Marfan syndrome",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "FBN1"
           ],
@@ -89,9 +92,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Marfan__syndrome"
+            {
+              "uuid": "d1",
+              "name": "Marfan syndrome",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "FBN1"
           ],

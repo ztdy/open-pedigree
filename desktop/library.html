@@ -18,9 +18,12 @@
   body { margin:0; font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: var(--bg); color: var(--ink); font-size: 14px; }
   header { position: sticky; top:0; background: var(--panel); border-bottom:1px solid var(--line);
-    padding: 14px 22px; display:flex; align-items:center; gap:16px; z-index:5; }
+    padding: 14px 22px; display:flex; align-items:center; gap:16px; z-index:5; flex-wrap:wrap; }
   header h1 { font-size:16px; margin:0; font-weight:650; letter-spacing:.2px; }
   header .spacer { flex:1; }
+  .help-group { display:inline-flex; align-items:center; gap:6px; }
+  .help-btn { padding:5px 10px; font-size:12.5px; color:var(--muted); display:inline-flex; align-items:center; gap:5px; }
+  .help-btn:hover { color:var(--ink); border-color:var(--accent); }
   input[type=search] { background: var(--bg); border:1px solid var(--line); color:var(--ink);
     border-radius:7px; padding:7px 11px; width:230px; outline:none; }
   input[type=search]:focus { border-color: var(--accent); }
@@ -72,6 +75,12 @@
     <button class="primary" id="btn-new">+ New pedigree</button>
     <button id="btn-import">Import…</button>
     <div class="spacer"></div>
+    <span class="help-group" id="help-group">
+      <button class="help-btn" id="btn-manual" title="User Guide">📖 <span>User Guide</span></button>
+      <button class="help-btn" id="btn-update" title="Check for updates"><span>Check for updates</span></button>
+      <button class="help-btn" id="btn-feedback" title="Send feedback"><span>Feedback</span></button>
+      <button class="help-btn" id="btn-about" title="About"><span>About</span></button>
+    </span>
     <span class="lang-switch" id="lang-switch"></span>
     <select id="project-filter" title="Project"></select>
     <input type="search" id="search" placeholder="Search pedigrees…" autocomplete="off">
@@ -95,6 +104,35 @@
   var projectFilterEl = document.getElementById('project-filter');
   var toastEl = document.getElementById('toast');
   var docs = [];
+  // Library view state to restore after the library<->editor round-trip (fetched once at boot,
+  // consumed on the first refresh). Saved back to the main process before we navigate away.
+  var savedUi = null;
+  // Resolves once the initial boot restore has finished. New/Import (header buttons, clickable before
+  // the list loads) await it so they never snapshot/act on a not-yet-restored view during a slow load.
+  var bootResolve;
+  var bootReady = new Promise(function (r) { bootResolve = r; });
+
+  // Persist the current search / project filter / sort / scroll to the main process, so returning
+  // from the editor lands on the same view instead of a reset list. Awaited before navigating so
+  // the state is stored before this page is torn down.
+  function snapshotUi() {
+    if (!api || !api.setLibraryUiState) { return Promise.resolve(); }
+    try {
+      var state;
+      if (savedUi) {
+        // The boot restore hasn't finished yet (savedUi not consumed): the project/scroll controls
+        // don't reflect the saved view, so re-save the pending values for those rather than clobber
+        // them with defaults if the user clicks New/Import during a slow document load. Search/sort
+        // ARE restored up-front, so take those live (the user may have already edited them).
+        state = { search: searchEl.value || savedUi.search || '', sort: sortEl.value || savedUi.sort || '',
+          project: savedUi.project || '', scrollTop: savedUi.scrollTop || 0 };
+      } else {
+        state = { search: searchEl.value || '', sort: sortEl.value || '', project: projectFilterEl.value || '',
+          scrollTop: window.scrollY || document.documentElement.scrollTop || 0 };
+      }
+      return Promise.resolve(api.setLibraryUiState(state)).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
 
   // i18n: the desktop shell (main process) owns the locale + dictionary; we pull both
   // via IPC at boot and translate locally. T(key) falls back to the English source.
@@ -150,10 +188,34 @@
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
   async function refresh() {
+    // Restore search/sort BEFORE the async listDocuments() — they don't need the doc list, and doing
+    // it up-front means a user who starts typing/sorting while the list loads isn't clobbered by a
+    // late restore (their input simply wins from there).
+    if (savedUi) {
+      if (typeof savedUi.search === 'string') { searchEl.value = savedUi.search; }
+      if (savedUi.sort) { sortEl.value = savedUi.sort; }
+    }
     try { docs = await api.listDocuments(); }
     catch (e) { content.innerHTML = '<div class="empty"><h2>' + esc(T('Could not read the library')) + '</h2><p>' + esc(e.message || e) + '</p></div>'; return; }
     populateProjectFilter();
+    // The project filter needs the <option>s to exist first (assigning a <select>.value with no
+    // matching option is silently dropped). Only restore if the option still exists AND the user
+    // hasn't already picked another project during the load (populateProjectFilter keeps their pick).
+    if (savedUi && savedUi.project && activeProject() === ALL) {
+      var opts = projectFilterEl.options;
+      for (var oi = 0; oi < opts.length; oi++) {
+        if (opts[oi].value === savedUi.project) { projectFilterEl.value = savedUi.project; break; }
+      }
+    }
     render();
+    if (savedUi && savedUi.scrollTop) {
+      var st = savedUi.scrollTop;
+      // list DOM is in place now; restore scroll on the next frame so layout has settled. AWAIT it
+      // so the boot gate (bootReady) only opens once scroll is actually restored — otherwise a New/
+      // Import firing between here and the frame would snapshot a stale scroll position.
+      await new Promise(function (res) { requestAnimationFrame(function () { window.scrollTo(0, st); res(); }); });
+    }
+    savedUi = null;   // consume once; later refreshes (delete/duplicate/rename) must not re-restore
   }
 
   function sortDocs(list) {
@@ -265,7 +327,7 @@
 
     var row = document.createElement('div'); row.className = 'row';
     if (!d.corrupt) {
-      row.appendChild(btn(T('Open'), 'primary', function () { api.openInEditor(d.documentId); }));
+      row.appendChild(btn(T('Open'), 'primary', async function () { await snapshotUi(); api.openInEditor(d.documentId); }));
       row.appendChild(btn(T('Rename'), '', function () { startRename(title, d); }));
       row.appendChild(btn(T('Duplicate'), '', async function () { await api.copyDocument(d.documentId); toast(T('Duplicated')); refresh(); }));
     }
@@ -343,18 +405,35 @@
   }
 
   document.getElementById('btn-new').addEventListener('click', async function () {
+    // Wait for the boot restore so the project filter (which a new pedigree inherits) reflects the
+    // saved view even if the list is still loading — otherwise New could land ungrouped.
+    await bootReady;
     // A new pedigree inherits whichever project is currently being viewed, so building a
     // project is just: filter to it (or create it on a card) then keep hitting "New".
     var proj = activeProject();
     var opts = { title: T('Untitled pedigree') };
     if (proj !== ALL && proj !== UNGROUPED) { opts.project = proj; }
+    await snapshotUi();
     try { await api.newInEditor(opts); }
     catch (e) { toast(T('Could not create: ') + (e.message || e)); }
   });
   document.getElementById('btn-import').addEventListener('click', async function () {
+    await bootReady;
+    await snapshotUi();
     try { var r = await api.importAsNew(); if (r && r.error) toast(T('Import failed: ') + r.error); }
     catch (e) { toast(T('Import failed: ') + (e.message || e)); }
   });
+  // Help / About (D1-D4, D6): the four actions live directly in the header as visible
+  // buttons (user guide, check for updates, feedback, about) instead of being buried
+  // behind a single "?" that opened a dialog full of buttons.
+  var wireHelp = function (id, fn) {
+    var el = document.getElementById(id);
+    if (el) { el.addEventListener('click', function () { if (api && fn) { fn(); } }); }
+  };
+  wireHelp('btn-manual',   function () { if (api.openManual) api.openManual(); });
+  wireHelp('btn-update',   function () { if (api.checkForUpdates) api.checkForUpdates(); });
+  wireHelp('btn-feedback', function () { if (api.sendFeedback) api.sendFeedback(); });
+  wireHelp('btn-about',    function () { if (api.showAbout) api.showAbout(); });
   searchEl.addEventListener('input', render);
   sortEl.addEventListener('change', render);
   projectFilterEl.addEventListener('change', render);
@@ -367,6 +446,16 @@
     document.title = T('Open Pedigree — Library');
     document.getElementById('btn-new').textContent = T('+ New pedigree');
     document.getElementById('btn-import').textContent = T('Import…');
+    // Help group labels (the emoji on the manual button stays; only the text span is translated).
+    var setSpan = function (id, key) { var b = document.getElementById(id); var s = b && b.querySelector('span'); if (s) { s.textContent = T(key); } };
+    setSpan('btn-manual', 'User Guide');
+    setSpan('btn-update', 'Check for updates');
+    setSpan('btn-feedback', 'Feedback');
+    setSpan('btn-about', 'About');
+    (function (b) { if (b) b.title = T('User Guide'); })(document.getElementById('btn-manual'));
+    (function (b) { if (b) b.title = T('Check for updates'); })(document.getElementById('btn-update'));
+    (function (b) { if (b) b.title = T('Send feedback'); })(document.getElementById('btn-feedback'));
+    (function (b) { if (b) b.title = T('About'); })(document.getElementById('btn-about'));
     projectFilterEl.title = T('Project');
     searchEl.placeholder = T('Search pedigrees…');
     sortEl.title = T('Sort');
@@ -400,6 +489,9 @@
             }
           }
         } catch (e) {}
+        // Snapshot the current view before the reload, so switching language keeps the user's
+        // search/filter/sort/scroll instead of restoring whatever was last saved (stale state).
+        await snapshotUi();
         try { location.reload(); } catch (e) {}
       });
       host.appendChild(a);
@@ -418,8 +510,12 @@
     if (!api) {
       content.innerHTML = '<div class="empty"><h2>' + esc(T('Desktop bridge unavailable')) + '</h2></div>';
     } else {
-      refresh();
+      if (api.getLibraryUiState) {
+        try { savedUi = await api.getLibraryUiState(); } catch (e) { savedUi = null; }
+      }
+      await refresh();
     }
+    bootResolve();   // restore done (or no api) — New/Import may proceed
   }
 
   boot();

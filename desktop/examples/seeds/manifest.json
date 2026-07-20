@@ -115,5 +115,18 @@
     "citation": "Standard FBN1 / Marfan genetics (Ghent nosology; ~25% de novo).",
     "provenance": "代表性家系,依据 Ghent 诊断标准(约1/4马凡为新发FBN1变异)。REPRESENTATIVE, de novo per Ghent nosology.",
     "persons": 7
+  },
+  {
+    "id": "e315fa49-c7a3-45dc-99f0-0af6a2d3d2d7",
+    "file": "e315fa49-c7a3-45dc-99f0-0af6a2d3d2d7.opedigree",
+    "title": "西班牙哈布斯堡王朝近亲婚配 · Spanish Habsburg inbreeding",
+    "project": "示例家系 · Example pedigrees",
+    "size": "large",
+    "inheritance": "Consanguinity showcase (inbreeding depression)",
+    "condition": "Habsburg jaw (mandibular prognathism)",
+    "gene": "",
+    "citation": "Alvarez G et al. PLoS ONE 2009;4:e5174 (doi:10.1371/journal.pone.0005174).",
+    "provenance": "真实历史家系：西班牙哈布斯堡王朝谱系依史料转录。卡洛斯二世的近交系数 F≈0.254 是 Alvarez et al. 2009 在完整约 3000 人、16 代谱系上算出的公开值；本示例只呈现导致其近交的主要环路（子集），并非用于复算该系数。REAL dynasty; the F≈0.254 figure is Alvarez 2009’s value computed on the FULL genealogy, not reproduced by this subset.",
+    "persons": 28
   }
 ]

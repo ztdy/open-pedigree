@@ -84,6 +84,33 @@ Individual annotations follow the
   status draws the triangle symbol labelled **ECT**.
 - **Twins of unknown zygosity** — a multiple can be marked **unknown zygosity**, tagging the
   connector with a **?** (distinct from known monozygotic / dizygotic).
+- **Per-condition affected / carrier status + fill patterns** — each individual records affected
+  or carrier status **per disorder** (one person can be affected by one condition and a carrier of
+  another). Per NSGC 2022 §4.5, carriers no longer use a central dot: each disorder gets **one fill
+  pattern + one colour** (affected = solid colour + sparse texture, carrier = same colour + dense
+  stripes), so **different disorders stay distinguishable in black-and-white print**. The legend
+  carries a fill key and split counts; double-click a name to rename.
+
+### 🧬 Family-wide clinical quick-add
+In any member's clinical panel, the disorder / gene / phenotype / genotype pickers list the entries
+**already used by other members of the family** (excluding the person's own), so a shared disorder
+or gene is one click away instead of a repeated search.
+
+### ✅ Consistency check
+The toolbar's "Check consistency" runs an on-demand logic check — death before birth, a parent
+younger than their child, a non-live-birth recorded as a parent, monozygotic twins of different
+assigned sex — and lists findings in a **non-blocking** panel; each is clickable to centre the
+node. It is **advisory only** (never blocks, never mutates) and **fires only on unambiguous errors**
+(consanguinity, recessive / de-novo inheritance and the like are never flagged).
+
+### 📖 Offline user guide
+The app bundles an **offline user guide** (viewable in-app with no network), with one-click
+**Print / Save as PDF** and a link to the project home.
+
+### 📚 10 bundled example pedigrees
+First launch seeds 10 teaching pedigrees under "Example pedigrees", including the **Spanish Habsburg
+inbreeding** family — a classic case where the app auto-draws all six consanguineous double-lines
+from the structure alone.
 
 ---
 
@@ -98,7 +125,11 @@ Individual annotations follow the
 - 📥 **Import PED / GEDCOM / BOADICEA / GA4GH FHIR** as a new pedigree
 - 🌐 **Bilingual UI (English / 简体中文)** — one‑click switch, remembered, no data loss
 - 🔄 **Built‑in auto‑update** — quiet check on launch, in‑app one‑click upgrade
-- 🩺 **NSGC 2022 clinical notation** — sex assigned at birth (AMAB/AFAB/UAAB), ectopic pregnancy (ECT), unknown‑zygosity twins (?)
+- 🩺 **NSGC 2022 clinical notation** — sex assigned at birth (AMAB/AFAB/UAAB), ectopic pregnancy (ECT), unknown‑zygosity twins (?), **per-condition affected/carrier status + per-disease fill patterns (B&W-distinguishable)**
+- 🧬 **Family-wide clinical quick-add** — reuse the family's existing disorders / genes / phenotypes in one click
+- ✅ **Consistency check** — non-blocking, false-positive-free pedigree logic check
+- 📖 **Offline user guide** + Print / Save as PDF
+- 📚 **10 bundled example pedigrees** (incl. Habsburg inbreeding)
 
 ---
 

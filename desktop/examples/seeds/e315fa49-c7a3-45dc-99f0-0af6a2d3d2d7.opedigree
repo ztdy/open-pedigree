@@ -1,0 +1,1051 @@
+{
+  "fileFormatVersion": 1,
+  "documentId": "e315fa49-c7a3-45dc-99f0-0af6a2d3d2d7",
+  "title": "西班牙哈布斯堡王朝近亲婚配 · Spanish Habsburg inbreeding",
+  "project": "示例家系 · Example pedigrees",
+  "isExample": true,
+  "createdAt": "2026-01-01T11:51:00.000Z",
+  "updatedAt": "2026-01-01T11:51:00.000Z",
+  "localizedTitle": {
+    "zh": "西班牙哈布斯堡王朝近亲婚配",
+    "en": "Spanish Habsburg inbreeding"
+  },
+  "localizedProject": {
+    "zh": "示例家系",
+    "en": "Example pedigrees"
+  },
+  "description": "王室近亲婚配的教科书范例：连续的叔侄婚与表亲婚使近交系数逐代累积，终结于身心残疾、无嗣的卡洛斯二世，哈布斯堡西班牙支绝嗣（其近交系数 F≈0.254 为 Alvarez 2009 在完整谱系上算出的公开值；本示例呈现的是主要近亲环路，非用于复算）。软件仅凭家系结构即自动识别 6 桩近亲婚配并画出双横线；「哈布斯堡下颌」（下颌前突）标注在文献记载最明确的个体上，可见该性状沿近交主线聚集并加重。先证者为卡洛斯二世。\n来源/Source: Alvarez G et al. PLoS ONE 2009;4:e5174 (doi:10.1371/journal.pone.0005174). [ex:e315fa49]",
+  "localizedDescription": {
+    "zh": "王室近亲婚配的教科书范例：连续的叔侄婚与表亲婚使近交系数逐代累积，终结于身心残疾、无嗣的卡洛斯二世，哈布斯堡西班牙支绝嗣（其近交系数 F≈0.254 为 Alvarez 2009 在完整谱系上算出的公开值；本示例呈现的是主要近亲环路，非用于复算）。软件仅凭家系结构即自动识别 6 桩近亲婚配并画出双横线；「哈布斯堡下颌」（下颌前突）标注在文献记载最明确的个体上，可见该性状沿近交主线聚集并加重。先证者为卡洛斯二世。\n来源/Source: Alvarez G et al. PLoS ONE 2009;4:e5174 (doi:10.1371/journal.pone.0005174). [ex:e315fa49]",
+    "en": "The textbook pedigree of royal inbreeding: successive uncle–niece and cousin marriages compound the inbreeding coefficient generation by generation, ending in the disabled, infertile Charles II and the extinction of the Spanish Habsburgs (his F≈0.254 is Alvarez 2009’s figure from the FULL genealogy — this showcase renders the principal consanguineous loops, not the exact coefficient). From the structure alone the app auto-detects six consanguineous unions and draws the double-lines; the \"Habsburg jaw\" (mandibular prognathism) is marked on the best-documented cases, clustering along the inbred line. Proband: Charles II.\n来源/Source: Alvarez G et al. PLoS ONE 2009;4:e5174 (doi:10.1371/journal.pone.0005174). [ex:e315fa49]"
+  },
+  "graph": {
+    "GG": [
+      {
+        "id": 0,
+        "prop": {
+          "gender": "M",
+          "fName": "Fernando II de Aragón"
+        },
+        "outedges": [
+          {
+            "to": 28
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "prop": {
+          "gender": "F",
+          "fName": "Isabel I de Castilla"
+        },
+        "outedges": [
+          {
+            "to": 28
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Habsburg jaw (mandibular prognathism)",
+              "status": "affected"
+            }
+          ],
+          "fName": "Maximiliano I"
+        },
+        "outedges": [
+          {
+            "to": 30
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "prop": {
+          "gender": "F",
+          "fName": "María de Borgoña"
+        },
+        "outedges": [
+          {
+            "to": 30
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "prop": {
+          "gender": "M",
+          "fName": "Manuel I de Portugal"
+        },
+        "outedges": [
+          {
+            "to": 32
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "prop": {
+          "gender": "F",
+          "fName": "Ana de Bohemia"
+        },
+        "outedges": [
+          {
+            "to": 38
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "prop": {
+          "gender": "F",
+          "fName": "Ana de Baviera"
+        },
+        "outedges": [
+          {
+            "to": 42
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "prop": {
+          "gender": "F",
+          "fName": "Ana de Baviera II"
+        },
+        "outedges": [
+          {
+            "to": 46
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "prop": {
+          "gender": "F",
+          "fName": "Juana I de Castilla"
+        },
+        "outedges": [
+          {
+            "to": 34
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "prop": {
+          "gender": "F",
+          "fName": "María de Aragón"
+        },
+        "outedges": [
+          {
+            "to": 32
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "prop": {
+          "gender": "M",
+          "fName": "Felipe I el Hermoso"
+        },
+        "outedges": [
+          {
+            "to": 34
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "prop": {
+          "gender": "F",
+          "fName": "Isabel de Portugal"
+        },
+        "outedges": [
+          {
+            "to": 36
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Habsburg jaw (mandibular prognathism)",
+              "status": "affected"
+            }
+          ],
+          "fName": "Carlos V"
+        },
+        "outedges": [
+          {
+            "to": 36
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "prop": {
+          "gender": "M",
+          "fName": "Fernando I"
+        },
+        "outedges": [
+          {
+            "to": 38
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "prop": {
+          "gender": "M",
+          "fName": "Felipe II"
+        },
+        "outedges": [
+          {
+            "to": 62
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "prop": {
+          "gender": "F",
+          "fName": "María de Austria"
+        },
+        "outedges": [
+          {
+            "to": 40
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "prop": {
+          "gender": "M",
+          "fName": "Maximiliano II"
+        },
+        "outedges": [
+          {
+            "to": 40
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "prop": {
+          "gender": "M",
+          "fName": "Carlos II de Estiria"
+        },
+        "outedges": [
+          {
+            "to": 42
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "prop": {
+          "gender": "F",
+          "fName": "Ana de Austria"
+        },
+        "outedges": [
+          {
+            "to": 44
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "prop": {
+          "gender": "F",
+          "fName": "Margarita de Austria"
+        },
+        "outedges": [
+          {
+            "to": 63
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "prop": {
+          "gender": "M",
+          "fName": "Fernando II Emperador"
+        },
+        "outedges": [
+          {
+            "to": 46
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "prop": {
+          "gender": "M",
+          "fName": "Felipe III"
+        },
+        "outedges": [
+          {
+            "to": 48
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "prop": {
+          "gender": "M",
+          "fName": "Fernando III Emperador"
+        },
+        "outedges": [
+          {
+            "to": 64
+          }
+        ]
+      },
+      {
+        "id": 23,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Habsburg jaw (mandibular prognathism)",
+              "status": "affected"
+            }
+          ],
+          "fName": "Felipe IV"
+        },
+        "outedges": [
+          {
+            "to": 65
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "prop": {
+          "gender": "F",
+          "fName": "María Ana de España"
+        },
+        "outedges": [
+          {
+            "to": 50
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "prop": {
+          "gender": "F",
+          "fName": "Mariana de Austria"
+        },
+        "outedges": [
+          {
+            "to": 52
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "prop": {
+          "gender": "M",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Habsburg jaw (mandibular prognathism)",
+              "status": "affected"
+            }
+          ],
+          "consultand": true,
+          "proband": true,
+          "fName": "Carlos II de España"
+        }
+      },
+      {
+        "id": 27,
+        "prop": {
+          "gender": "F",
+          "fName": "Margarita Teresa"
+        }
+      },
+      {
+        "id": 28,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 29
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 8
+          },
+          {
+            "to": 9
+          }
+        ]
+      },
+      {
+        "id": 30,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 31
+          }
+        ]
+      },
+      {
+        "id": 31,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 10
+          }
+        ]
+      },
+      {
+        "id": 32,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 33
+          }
+        ]
+      },
+      {
+        "id": 33,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 11
+          }
+        ]
+      },
+      {
+        "id": 34,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 35
+          }
+        ]
+      },
+      {
+        "id": 35,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 13
+          },
+          {
+            "to": 12
+          }
+        ]
+      },
+      {
+        "id": 36,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 37
+          }
+        ]
+      },
+      {
+        "id": 37,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 15
+          },
+          {
+            "to": 14
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 39
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 17
+          },
+          {
+            "to": 16
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 41
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 18
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 43
+          }
+        ]
+      },
+      {
+        "id": 43,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 20
+          },
+          {
+            "to": 19
+          }
+        ]
+      },
+      {
+        "id": 44,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 45
+          }
+        ]
+      },
+      {
+        "id": 45,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 21
+          }
+        ]
+      },
+      {
+        "id": 46,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 47
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 22
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 49
+          }
+        ]
+      },
+      {
+        "id": 49,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 24
+          },
+          {
+            "to": 23
+          }
+        ]
+      },
+      {
+        "id": 50,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 51
+          }
+        ]
+      },
+      {
+        "id": 51,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 25
+          }
+        ]
+      },
+      {
+        "id": 52,
+        "rel": true,
+        "hub": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 53
+          }
+        ]
+      },
+      {
+        "id": 53,
+        "chhub": true,
+        "prop": null,
+        "outedges": [
+          {
+            "to": 27
+          },
+          {
+            "to": 26
+          }
+        ]
+      },
+      {
+        "id": 54,
+        "virt": true,
+        "prop": {
+          "fName": "_14->44_1"
+        },
+        "outedges": [
+          {
+            "to": 55
+          }
+        ]
+      },
+      {
+        "id": 55,
+        "virt": true,
+        "prop": {
+          "fName": "_14->44_2"
+        },
+        "outedges": [
+          {
+            "to": 44
+          }
+        ]
+      },
+      {
+        "id": 56,
+        "virt": true,
+        "prop": {
+          "fName": "_19->48_1"
+        },
+        "outedges": [
+          {
+            "to": 57
+          }
+        ]
+      },
+      {
+        "id": 57,
+        "virt": true,
+        "prop": {
+          "fName": "_19->48_2"
+        },
+        "outedges": [
+          {
+            "to": 48
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "virt": true,
+        "prop": {
+          "fName": "_22->50_1"
+        },
+        "outedges": [
+          {
+            "to": 59
+          }
+        ]
+      },
+      {
+        "id": 59,
+        "virt": true,
+        "prop": {
+          "fName": "_22->50_2"
+        },
+        "outedges": [
+          {
+            "to": 50
+          }
+        ]
+      },
+      {
+        "id": 60,
+        "virt": true,
+        "prop": {
+          "fName": "_23->52_1"
+        },
+        "outedges": [
+          {
+            "to": 61
+          }
+        ]
+      },
+      {
+        "id": 61,
+        "virt": true,
+        "prop": {
+          "fName": "_23->52_2"
+        },
+        "outedges": [
+          {
+            "to": 52
+          }
+        ]
+      },
+      {
+        "id": 62,
+        "virt": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 54
+          }
+        ]
+      },
+      {
+        "id": 63,
+        "virt": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 56
+          }
+        ]
+      },
+      {
+        "id": 64,
+        "virt": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 58
+          }
+        ]
+      },
+      {
+        "id": 65,
+        "virt": true,
+        "prop": {},
+        "outedges": [
+          {
+            "to": 60
+          }
+        ]
+      }
+    ],
+    "ranks": [
+      1,
+      1,
+      1,
+      1,
+      3,
+      5,
+      7,
+      9,
+      3,
+      3,
+      3,
+      5,
+      5,
+      5,
+      7,
+      7,
+      7,
+      7,
+      9,
+      9,
+      9,
+      11,
+      11,
+      13,
+      13,
+      15,
+      17,
+      17,
+      1,
+      2,
+      1,
+      2,
+      3,
+      4,
+      3,
+      4,
+      5,
+      6,
+      5,
+      6,
+      7,
+      8,
+      7,
+      8,
+      9,
+      10,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      7,
+      9,
+      11,
+      13
+    ],
+    "order": [
+      [],
+      [
+        2,
+        30,
+        3,
+        0,
+        28,
+        1
+      ],
+      [
+        31,
+        29
+      ],
+      [
+        10,
+        34,
+        8,
+        9,
+        32,
+        4
+      ],
+      [
+        35,
+        33
+      ],
+      [
+        5,
+        38,
+        13,
+        12,
+        36,
+        11
+      ],
+      [
+        39,
+        37
+      ],
+      [
+        6,
+        42,
+        17,
+        16,
+        40,
+        15,
+        62,
+        14
+      ],
+      [
+        43,
+        41,
+        54
+      ],
+      [
+        7,
+        46,
+        20,
+        19,
+        63,
+        18,
+        44,
+        55
+      ],
+      [
+        47,
+        56,
+        45
+      ],
+      [
+        22,
+        64,
+        57,
+        48,
+        21
+      ],
+      [
+        58,
+        49
+      ],
+      [
+        59,
+        50,
+        24,
+        65,
+        23
+      ],
+      [
+        51,
+        60
+      ],
+      [
+        25,
+        52,
+        61
+      ],
+      [
+        53
+      ],
+      [
+        27,
+        26
+      ]
+    ],
+    "positions": [
+      101,
+      125,
+      57,
+      81,
+      147,
+      53,
+      31,
+      5,
+      103,
+      123,
+      69,
+      135,
+      97,
+      77,
+      131,
+      99,
+      75,
+      55,
+      87,
+      53,
+      33,
+      105,
+      17,
+      95,
+      63,
+      44,
+      75,
+      55,
+      113,
+      113,
+      69,
+      69,
+      135,
+      135,
+      87,
+      87,
+      109,
+      109,
+      65,
+      65,
+      87,
+      87,
+      43,
+      43,
+      105,
+      105,
+      17,
+      17,
+      79,
+      79,
+      44,
+      44,
+      65,
+      65,
+      119,
+      119,
+      65,
+      65,
+      29,
+      29,
+      83,
+      83,
+      119,
+      65,
+      29,
+      83
+    ]
+  }
+}

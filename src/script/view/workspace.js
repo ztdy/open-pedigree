@@ -182,6 +182,11 @@ var Workspace = Class.create({
           { key : 'readonlymessage', label : I18n.t('Unsuported browser mode'), icon : 'exclamation-triangle'}
         ]
       }, {
+        name : 'check',
+        items: [
+          { key : 'validate', label : I18n.t('Check consistency'), icon : 'clipboard-check'}
+        ]
+      }, {
         name : 'output',
         items: [
           { key : 'export',    label : I18n.t('Export'), icon : 'file-export'},
@@ -210,6 +215,11 @@ var Workspace = Class.create({
         name : 'reset',
         items: [
           { key : 'clear',  label : I18n.t('Clear all'), icon : 'times-circle'}
+        ]
+      }, {
+        name : 'check',
+        items: [
+          { key : 'validate', label : I18n.t('Check consistency'), icon : 'clipboard-check'}
         ]
       }, {
         name : 'output',

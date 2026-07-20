@@ -7,11 +7,91 @@ const { DocumentStore } = require('./documentStore');
 const { detectImportType } = require('./importDetect');
 const { resolveLibraryDir } = require('./libraryConfig');
 const offlineData = require('./offlineData');
-const { initAutoUpdate } = require('./updater');
+const { initAutoUpdate, checkForUpdatesManual } = require('./updater');
+const { attachDownloadFailureGuard } = require('./downloadGuard');
 const i18n = require('./i18n');
 const t = (k) => i18n.t(k);
 
 const MAX_IMPORT_BYTES = 8 * 1024 * 1024; // reject absurdly large import files
+
+// Help links (D3/D6). The manual ships INSIDE the app as an offline, self-contained
+// HTML (built from docs/USER_GUIDE.md by build-guide.js) so it works with no network
+// and never 404s. FEEDBACK is an online-only link, opened in the OS browser.
+const { GUIDE_HTML, openGuideExternally } = require('./userGuide');
+const FEEDBACK_URL = 'https://github.com/ztdy/open-pedigree/issues';
+
+let guideWindow = null; // single reusable manual window
+
+// Show a native error box parented to the main window (used for guide failures).
+function guideError(detailKey) {
+  dialog.showMessageBox(mainWindow || undefined, {
+    type: 'error', buttons: ['OK'], noLink: true,
+    title: t('User Guide'), message: t('The user guide could not be opened.'),
+    detail: t(detailKey)
+  }).catch(() => {});
+}
+
+// Open the offline user manual in its own window. Reuses one window (focuses it if
+// already open). The guide always ships inside the app, so a missing/corrupt file is a
+// packaging fault — we surface a clear error rather than a misleading (404) web link.
+function openUserGuide() {
+  const fs = require('fs');
+  if (!fs.existsSync(GUIDE_HTML)) {
+    guideError('The manual file is missing. Please reinstall the app.');
+    return;
+  }
+  if (guideWindow && !guideWindow.isDestroyed()) {
+    if (guideWindow.isMinimized()) { guideWindow.restore(); }
+    guideWindow.focus();
+    return;
+  }
+
+  // The embedded window can fail two ways on the user's machine: loadFile can transiently
+  // abort, and — because this is an image-heavy page — the sandboxed on-screen renderer's
+  // GPU process can crash while compositing it (reported as the "manual damaged" box). Guard
+  // BOTH: retry the load, and if the render process dies, fall back to the OS browser so the
+  // user still gets their manual instead of a dead-end. `settled` runs the recovery once.
+  let settled = false;
+  const recover = async () => {
+    if (settled) { return; }
+    settled = true;
+    if (guideWindow && !guideWindow.isDestroyed()) { guideWindow.destroy(); }
+    guideWindow = null;
+    const res = await openGuideExternally(shell);
+    if (!res.ok) {
+      guideError('The manual file is damaged. Please reinstall the app.');
+    }
+  };
+
+  guideWindow = new BrowserWindow({
+    width: 900, height: 800,
+    title: t('User Guide'),
+    autoHideMenuBar: true,
+    // Child of the main window so it never outlives it (closing the app also closes the
+    // guide -> window-all-closed can fire and the app quits cleanly).
+    parent: (mainWindow && !mainWindow.isDestroyed()) ? mainWindow : undefined,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+  });
+  guideWindow.setMenu(null);
+  // The guide is a single static page: never navigate it away. Send http(s) links to the
+  // OS browser; silently refuse everything else (file:/data:/javascript:/UNC/…). Same-
+  // document #fragment jumps don't fire will-navigate, so the table of contents still works.
+  guideWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url)) { shell.openExternal(url).catch(() => {}); }
+    return { action: 'deny' };
+  });
+  guideWindow.webContents.on('will-navigate', (e, url) => {
+    e.preventDefault();
+    if (/^https?:/i.test(url)) { shell.openExternal(url).catch(() => {}); }
+  });
+  guideWindow.on('closed', () => { guideWindow = null; });
+  // A successful paint means we never need the fallback.
+  guideWindow.webContents.once('did-finish-load', () => { settled = true; });
+  // Renderer/GPU crash while loading or compositing -> recover to the OS browser.
+  guideWindow.webContents.on('render-process-gone', () => { recover(); });
+  // loadFile rejected after retries (file exists but won't load) -> recover too.
+  loadFileWithRetry(guideWindow, GUIDE_HTML, 3).catch(() => { recover(); });
+}
 
 // Hardened shell for the legacy renderer. See DESKTOP_PLAN.md §3–4.
 // contextIsolation on, nodeIntegration off, sandbox on. All filesystem access lives
@@ -34,6 +114,10 @@ let saveReqSeq = 0;
 // reports back via app:import-done, so a reload/crash before the import runs can recover it.
 let pendingOpen = null;      // { documentId, import: { importType, content } | null }
 let navigating = false;      // serialises view transitions
+// Library UI state (search text / project filter / sort / scroll), kept in the main process so it
+// survives the full-page loadFile() round-trip between the library and the editor. Lives for the
+// app run only (not persisted to disk) — reopening the library after editing restores the view.
+let libraryUiState = null;   // { search, project, sort, scrollTop } | null
 
 function pathToFileURL(p) {
   return require('url').pathToFileURL(p).toString();
@@ -150,6 +234,10 @@ function createWindow() {
     if (/^https?:/i.test(url)) shell.openExternal(url).catch(() => {});
     return { action: 'deny' };
   });
+
+  // Warn the user if an export download actually fails to write (e.g. overwriting a file that is
+  // open elsewhere / read-only / on a full disk) — see downloadGuard.js for why this is needed.
+  attachDownloadFailureGuard(win.webContents.session, () => win, dialog, t);
 
   // Unsaved-changes guard on window close.
   win.on('close', (event) => {
@@ -284,11 +372,15 @@ function senderIsTrusted(event) {
 // Which IPC channels each page is allowed to call (Codex #8). The editor cannot touch
 // library management (trash/rename/…) and the library cannot drive save/dirty.
 const LIBRARY_CHANNELS = new Set(['doc:list', 'doc:create', 'doc:rename', 'doc:copy', 'doc:trash',
-  'doc:set-project', 'app:open-in-editor', 'app:new-in-editor', 'app:import-as-new']);
+  'doc:set-project', 'app:open-in-editor', 'app:new-in-editor', 'app:import-as-new',
+  // Library view-state persistence (only the library page reads/writes these).
+  'app:get-library-ui-state', 'app:set-library-ui-state']);
 const EDITOR_CHANNELS = new Set(['app:bootstrap', 'doc:open', 'doc:save', 'app:back-to-library', 'app:import-done']);
 // Locale channels are read/written by both pages (the editor persists the user's choice;
 // the library reads it to translate itself), so they're allowed from any trusted view.
-const UTIL_CHANNELS = new Set(['app:get-locale', 'app:set-locale', 'app:get-i18n']);
+const UTIL_CHANNELS = new Set(['app:get-locale', 'app:set-locale', 'app:get-i18n',
+  // Help / About group (D1-D4, D6): reachable from either page.
+  'app:about', 'app:check-updates', 'app:open-manual', 'app:feedback']);
 
 function viewFor(event) {
   const url = event.sender.getURL();
@@ -406,6 +498,55 @@ function registerIpc() {
   handle('app:get-locale', () => i18n.getLocale());
   handle('app:set-locale', (locale) => { var persisted = i18n.setLocale(locale); return { ok: persisted, persisted: persisted, locale: i18n.getLocale() }; });
   handle('app:get-i18n', () => ({ locale: i18n.getLocale(), messages: i18n.messages() }));
+
+  // Library view state, so opening a pedigree and coming back doesn't reset the user's search /
+  // filter / sort / scroll (painful once the library has many pedigrees). Sanitised to a small
+  // fixed shape — the library page is the only writer/reader.
+  handle('app:get-library-ui-state', () => libraryUiState);
+  handle('app:set-library-ui-state', (state) => {
+    if (state && typeof state === 'object') {
+      libraryUiState = {
+        search: typeof state.search === 'string' ? state.search.slice(0, 200) : '',
+        project: typeof state.project === 'string' ? state.project.slice(0, 200) : '',
+        sort: typeof state.sort === 'string' ? state.sort.slice(0, 40) : '',
+        scrollTop: Number.isFinite(state.scrollTop) ? Math.max(0, state.scrollTop) : 0
+      };
+    } else {
+      libraryUiState = null;
+    }
+    return { ok: true };
+  });
+
+  // --- Help / About group (D1-D4, D6) ---------------------------------------------------------
+  // One "About" entry point (native dialog) that also links out to the user guide, feedback and a
+  // manual update check — matching the app's "no native menu, dialogs for chrome" style.
+  handle('app:about', async () => {
+    const win = mainWindow;
+    const version = app.getVersion();
+    // Info-only: User Guide / Feedback / Check-for-updates are now first-class
+    // buttons in the library header, so About no longer doubles as an action menu.
+    await dialog.showMessageBox(win || undefined, {
+      type: 'info',
+      noLink: true,
+      title: t('About Open Pedigree'),
+      message: t('Open Pedigree') + '  ' + version,
+      detail: [
+        t('An offline pedigree drawing tool following NSGC 2022/2025 nomenclature.'),
+        '',
+        t('License: LGPL-2.1. Derived from PhenoTips open-pedigree.'),
+        t('Nomenclature: Bennett RL et al., J Genet Couns 2022;31:1238-1248 (updated 2025).'),
+        '',
+        t("What's new in 0.2: per-condition affected/carrier status (hatched carrier fill), redesigned legend with a fill key, and in-place disorder renaming.")
+      ].join('\n'),
+      buttons: [t('Close')],
+      defaultId: 0,
+      cancelId: 0
+    });
+    return { ok: true };
+  });
+  handle('app:check-updates', async () => { await checkForUpdatesManual(() => mainWindow); return { ok: true }; });
+  handle('app:open-manual', () => { openUserGuide(); return { ok: true }; });
+  handle('app:feedback', () => { shell.openExternal(FEEDBACK_URL).catch(() => {}); return { ok: true }; });
 
   // One-way dirty updates from renderer -> main (drives close confirmation).
   ipcMain.on('doc:dirty', (e, dirty) => {

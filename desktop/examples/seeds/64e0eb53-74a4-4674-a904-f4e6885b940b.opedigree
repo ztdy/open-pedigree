@@ -25,7 +25,13 @@
         "id": 0,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "carrier"
+            }
+          ],
           "fName": "I-1"
         },
         "outedges": [
@@ -62,7 +68,13 @@
         "id": 3,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "carrier"
+            }
+          ],
           "fName": "I-4"
         },
         "outedges": [
@@ -75,7 +87,13 @@
         "id": 4,
         "prop": {
           "gender": "M",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-1"
         },
         "outedges": [
@@ -88,7 +106,13 @@
         "id": 5,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "carrier"
+            }
+          ],
           "fName": "II-2"
         },
         "outedges": [
@@ -116,9 +140,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Cystic__fibrosis"
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "CFTR"
           ],
@@ -130,7 +157,13 @@
         "id": 9,
         "prop": {
           "gender": "F",
-          "carrierStatus": "carrier",
+          "disorders": [
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "carrier"
+            }
+          ],
           "fName": "III-2"
         }
       },
@@ -146,9 +179,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Cystic__fibrosis"
+            {
+              "uuid": "d1",
+              "name": "Cystic fibrosis",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "CFTR"
           ],

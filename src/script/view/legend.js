@@ -200,7 +200,25 @@ var Legend = Class.create( {
      * @private
      */
   _hasAffectedNodes: function(id) {
-    return this._affectedNodes.hasOwnProperty(id);
+    return Object.prototype.hasOwnProperty.call(this._affectedNodes, id);
+  },
+
+  /**
+     * Remap the node IDs this legend tracks after the view renumbers nodes (deleting a node compacts
+     * higher IDs via view.changeNodeIds). Without this, _affectedNodes would keep STALE node IDs — a
+     * renumbered carrier would drop out of its case count, and a recolor would dereference a vanished
+     * ID. Applies to every legend type (disorder / gene / HPO).
+     *
+     * @param {Object} changedIdsSet map of oldNodeID -> newNodeID
+     */
+  replaceNodeIds: function(changedIdsSet) {
+    for (var id in this._affectedNodes) {
+      if (Object.prototype.hasOwnProperty.call(this._affectedNodes, id)) {
+        this._affectedNodes[id] = this._affectedNodes[id].map(function(nodeID) {
+          return Object.prototype.hasOwnProperty.call(changedIdsSet, nodeID) ? changedIdsSet[nodeID] : nodeID;
+        });
+      }
+    }
   },
 
   /**

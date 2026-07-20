@@ -121,8 +121,8 @@ var PersonGroup = Class.create(Person, {
   getSummary: function() {
     var disorders = [];
     this.getDisorders().forEach(function(disorder) {
-      var disorderName = editor.getDisorderLegend().getDisorder(disorder).getName();
-      disorders.push({id: disorder, value: disorderName});
+      // Disorders are { uuid, name, status } objects now; the name lives on the entry.
+      disorders.push({id: disorder.uuid, value: disorder.name});
     });
 
     var cantChangeAdopted = this.isFetus() || editor.getGraph().hasToBeAdopted(this.getID());

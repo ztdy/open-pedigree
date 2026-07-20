@@ -26,9 +26,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -131,9 +134,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -151,9 +157,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -178,9 +187,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -197,9 +209,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -218,9 +233,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -238,9 +256,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -256,8 +277,8 @@
         "id": 16,
         "prop": {
           "gender": "M",
-          "carrierStatus": "presymptomatic",
-          "fName": "III-8"
+          "fName": "III-8",
+          "presymptomatic": true
         }
       },
       {
@@ -265,9 +286,12 @@
         "prop": {
           "gender": "F",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -291,9 +315,12 @@
         "prop": {
           "gender": "M",
           "disorders": [
-            "Huntington__disease"
+            {
+              "uuid": "d1",
+              "name": "Huntington disease",
+              "status": "affected"
+            }
           ],
-          "carrierStatus": "affected",
           "candidateGenes": [
             "HTT"
           ],
@@ -304,8 +331,8 @@
         "id": 20,
         "prop": {
           "gender": "F",
-          "carrierStatus": "presymptomatic",
-          "fName": "IV-2"
+          "fName": "IV-2",
+          "presymptomatic": true
         }
       },
       {
@@ -319,8 +346,8 @@
         "id": 22,
         "prop": {
           "gender": "F",
-          "carrierStatus": "presymptomatic",
-          "fName": "IV-4"
+          "fName": "IV-4",
+          "presymptomatic": true
         }
       },
       {

@@ -55,8 +55,16 @@ var Person = Class.create(AbstractPerson, {
     this._externalID = '';
     this._lifeStatus = 'alive';
     this._childlessStatus = null;
-    this._carrierStatus = '';
+    // F1b (0.2): per-condition status model. Each disorder is a plain object
+    //   { uuid, name, status:'affected'|'carrier' [, needsRepair] }
+    // (was: a flat array of sanitized-id strings, all implicitly "affected"). The uuid is the
+    // legend/colour key and is stable per disease name across the whole pedigree. See
+    // docs/DESIGN-F1a-data-model.md and model/disorderStatusMigration.js.
     this._disorders = [];
+    // Symbol-level "pre-symptomatic" flag (dominant, gene-positive, not yet affected — drawn as a
+    // vertical line). Replaces the old carrierStatus enum value 'presymptomatic'. affected/carrier
+    // are per-disorder now (disorder.status), so they are NOT stored here.
+    this._presymptomatic = false;
     this._hpo = [];
     this._candidateGenes = [];
     // Free-text genotype / variant result (e.g. "BRCA1 c.68_69del (+)", "CFTR: negative"). Per
@@ -606,55 +614,113 @@ var Person = Class.create(AbstractPerson, {
   },
 
   /**
-     * Sets the global disorder carrier status for this Person
+     * Returns whether this person is flagged pre-symptomatic (symbol-level vertical line).
      *
-     * @method setCarrier
-     * @param status One of {'', 'carrier', 'affected', 'presymptomatic'}
+     * @method getPresymptomatic
+     * @return {Boolean}
      */
-  setCarrierStatus: function(status) {
-    var numDisorders = this.getDisorders().length;
+  getPresymptomatic: function() {
+    return this._presymptomatic;
+  },
 
-    if (status === undefined || status === null) {
-      if (numDisorders == 0) {
-        status = '';
-      } else {
-        status = this.getCarrierStatus();
-        if (status == '') {
-          status = 'affected';
-        }
-      }
-    }
-
-    if (!this._isValidCarrierStatus(status)) {
-      return;
-    }
-
-    if (numDisorders > 0 && status == '') {
-      if (numDisorders == 1 && this.getDisorders()[0] == 'affected') {
-        this.removeDisorder('affected');
-        this.getGraphics().updateDisorderShapes();
-      } else {
-        status = 'affected';
-      }
-    } else if (numDisorders == 0 && status == 'affected') {
-      this.addDisorder('affected');
-      this.getGraphics().updateDisorderShapes();
-    }
-
-    if (status != this._carrierStatus) {
-      this._carrierStatus = status;
-      this.getGraphics().updateCarrierGraphic();
+  /**
+     * Sets the pre-symptomatic flag and repaints the symbol-level carrier graphic.
+     *
+     * @method setPresymptomatic
+     * @param {Boolean} value
+     */
+  setPresymptomatic: function(value) {
+    value = !!value;
+    if (value != this._presymptomatic) {
+      this._presymptomatic = value;
+      this.getGraphics() && this.getGraphics().updateCarrierGraphic();
     }
   },
 
   /**
-     * Returns the global disorder carrier status for this person.
+     * COMPATIBILITY SHIM (F1b interim; the per-disorder status editor is F1c).
      *
-     * @method getCarrier
-     * @return {String} Dissorder carrier status
+     * affected/carrier are per-disorder now and pre-symptomatic is its own boolean, but the node
+     * menu still exposes a single symbol-level "Carrier status" radio, and the undo stack replays
+     * whatever getCarrierStatus() returned. This maps that one symbol-level value onto the
+     * per-condition model — the same rules the on-load migration uses (disorderStatusMigration.js).
+     *
+     * @method setCarrierStatus
+     * @param status One of {'', 'carrier', 'affected', 'presymptomatic'}
+     */
+  setCarrierStatus: function(status) {
+    if (status === undefined || status === null) {
+      // Legacy no-arg "reconcile after setDisorders" call — the per-disorder model is already
+      // authoritative, so there is nothing to reconcile. Kept as a no-op for old call sites.
+      return;
+    }
+    if (!this._isValidCarrierStatus(status)) {
+      return;
+    }
+
+    this.setPresymptomatic(status == 'presymptomatic');
+    if (status == 'presymptomatic') {
+      return;   // pre-symptomatic leaves the disorder list untouched
+    }
+
+    var disorders = this.getDisorders();
+    if (status == 'affected' || status == 'carrier') {
+      if (disorders.length == 0) {
+        // No named disease: synthesise a placeholder so the state is representable and round-trips.
+        // 'affected' -> a generic named "Affected" condition (NSGC Fig 2); 'carrier' -> a
+        // repair-flagged placeholder (D5), mirroring the migration for an orphan carrier.
+        if (status == 'affected') {
+          this.addDisorder({ name: Person.GENERIC_AFFECTED_NAME, status: 'affected', synthetic: true });
+        } else {
+          this.addDisorder({ name: Person.CARRIER_PLACEHOLDER_NAME, status: 'carrier', needsRepair: true, synthetic: true });
+        }
+      } else {
+        for (var i = 0; i < disorders.length; i++) {
+          disorders[i].status = status;
+        }
+      }
+      this.getGraphics() && this.getGraphics().updateDisorderShapes();
+    } else {   // status == ''  (not affected)
+      // Drop a lone synthetic placeholder so "not affected" truly clears it; real diagnoses can't
+      // be silently removed here, so leave them (a listed disorder means affected/carrier).
+      if (disorders.length == 1 && this._isSyntheticDisorder(disorders[0])) {
+        this.removeDisorder(disorders[0].uuid);
+        this.getGraphics() && this.getGraphics().updateDisorderShapes();
+      }
+    }
+    editor.getDisorderLegend().refresh();   // per-status counts / swatches / fill key
+  },
+
+  /**
+     * Derives a single symbol-level carrier status from the per-condition model, for the node-menu
+     * radio, the undo snapshot, and legacy exporters. Pre-symptomatic wins; otherwise a person with
+     * disorders reads as 'carrier' iff every disorder is a carrier, else 'affected'.
+     *
+     * @method getCarrierStatus
+     * @return {String} one of {'', 'carrier', 'affected', 'presymptomatic'}
      */
   getCarrierStatus: function() {
-    return this._carrierStatus;
+    if (this._presymptomatic) {
+      return 'presymptomatic';
+    }
+    var disorders = this.getDisorders();
+    if (disorders.length == 0) {
+      return '';
+    }
+    for (var i = 0; i < disorders.length; i++) {
+      if (disorders[i].status != 'carrier') {
+        return 'affected';
+      }
+    }
+    return 'carrier';
+  },
+
+  // A synthetic disorder is one the app invented to represent a symbol-level state that carries no
+  // real disease name (the generic "Affected" / the orphan-carrier placeholder). Detected by an
+  // explicit flag, NOT by name — otherwise a clinician who literally types "Affected" (or "疾病A")
+  // as a diagnosis would have it silently auto-removed.
+  _isSyntheticDisorder: function(d) {
+    return !!(d && d.synthetic);
   },
 
   /**
@@ -666,7 +732,7 @@ var Person = Class.create(AbstractPerson, {
   getAllNodeColors: function() {
     var result = [];
     for (var i = 0; i < this.getDisorders().length; i++) {
-      result.push(editor.getDisorderLegend().getObjectColor(this.getDisorders()[i]));
+      result.push(editor.getDisorderLegend().getObjectColor(this.getDisorders()[i].uuid));
     }
     // Candidate genes deliberately do NOT contribute a fill colour any more. A gene sector on top
     // of a disorder sector made an affected individual read as having "two diseases" (NSGC: the
@@ -676,27 +742,121 @@ var Person = Class.create(AbstractPerson, {
   },
 
   /**
-     * Returns a list of disorders of this person.
+     * Returns this person's disorders as an array of plain objects { uuid, name, status
+     * [, needsRepair] }. This is the live internal array (undo replays it verbatim — see the
+     * note on addDisorder), so callers must not mutate the entries in place.
      *
      * @method getDisorders
-     * @return {Array} List of disorder IDs.
+     * @return {Array} List of disorder objects.
      */
   getDisorders: function() {
     return this._disorders;
   },
 
   /**
-     * Returns a list of disorders of this person, with non-scrambled IDs
+     * Returns a serialisation-ready deep copy of this person's disorders. Names are already stored
+     * clean (no id encoding), so — unlike the old flat-id model — nothing has to be desanitized.
      *
      * @method getDisordersForExport
-     * @return {Array} List of human-readable versions of disorder IDs
+     * @return {Array} List of { uuid, name, status [, needsRepair] } objects.
      */
   getDisordersForExport: function() {
-    var exportDisorders = this._disorders.slice(0);
-    for (var i = 0; i < exportDisorders.length; i++) {
-      exportDisorders[i] = Disorder.desanitizeID(exportDisorders[i]);
+    return this._disorders.map(function(d) {
+      var copy = { uuid: d.uuid, name: d.name, status: d.status };
+      if (d.needsRepair) {
+        copy.needsRepair = true;
+      }
+      if (d.synthetic) {
+        copy.synthetic = true;
+      }
+      return copy;
+    });
+  },
+
+  /**
+     * Normalises whatever addDisorder / setDisorders is handed into { uuid, name, status
+     * [, needsRepair] }. Accepts, in order:
+     *   - a plain new-model object { uuid?, name, status?, needsRepair? } — from load / migration /
+     *     undo replay (getDisorders returns these; see the R1 note on addDisorder);
+     *   - a Disorder object (the disease picker builds one) — name from getName();
+     *   - a bare string — a legacy sanitized id or free-text name (old undo stacks, old files that
+     *     dodged the migration); desanitized to a name.
+     * The uuid is resolved by NAME through the document-level legend registry, so the same disease
+     * anywhere in the pedigree shares one uuid (hence one legend row and colour). An explicit uuid
+     * on a plain object is honoured (and registered) so migrated ids stay stable.
+     *
+     * @return {Object|null} normalised disorder, or null if no usable name could be derived.
+     */
+  _normalizeDisorder: function(disorder) {
+    var name = null;
+    var status = null;
+    var explicitUuid = null;
+    var needsRepair = false;
+    var synthetic = false;
+
+    if (disorder && typeof disorder == 'object' && typeof disorder.getDisorderID == 'function') {
+      // a Disorder instance (picker)
+      name = disorder.getName();
+      // A CODED disorder (OMIM MIM number / Orphanet CURIE) keeps its CODE as its identity/uuid, so
+      // the standardised identifier survives the round-trip and the legend can re-resolve the name
+      // from the bundled dataset (following the UI language). Free-text disorders key by name.
+      if (Disorder.isCodedID(disorder.getDisorderID())) {
+        explicitUuid = disorder.getDisorderID();
+      }
+    } else if (disorder && typeof disorder == 'object') {
+      // a plain new-model entry (load / migration / undo)
+      name = disorder.name;
+      status = disorder.status || null;
+      explicitUuid = disorder.uuid || null;
+      needsRepair = !!disorder.needsRepair;
+      synthetic = !!disorder.synthetic;
+      // Defensive back-compat: a plain object with no name but a legacy id-like field.
+      if (name == null && disorder.id != null) {
+        name = Disorder.desanitizeID(String(disorder.id));
+      }
+    } else if (disorder != null) {
+      // a bare string: legacy id or free text
+      var sid = Disorder.sanitizeID(String(disorder));
+      name = Disorder.desanitizeID(String(disorder));
+      if (Disorder.isCodedID(sid)) {
+        explicitUuid = sid;   // coded id: keep the code as the identity (see above)
+      }
     }
-    return exportDisorders;
+
+    if (name == null || name === '') {
+      return null;
+    }
+    // The legacy hack sentinel 'affected' (lowercase) is the app-generated generic condition — map
+    // it to the canonical name AND flag it synthetic (so it stays auto-removable), collapsing onto
+    // the migration's 'Affected'. A clinician-typed "Affected" (via a Disorder/plain object) is NOT
+    // the sentinel and is never flagged here.
+    if (name === 'affected') {
+      name = Person.GENERIC_AFFECTED_NAME;
+      synthetic = true;
+    }
+    if (status != 'carrier' && status != 'affected') {
+      status = 'affected';   // default: a listed disorder is a phenotype unless flagged a carrier
+    }
+
+    var legend = editor.getDisorderLegend();
+    var uuid;
+    if (explicitUuid != null && explicitUuid !== '') {
+      // Always a STRING: a coded id / loaded file can carry a NUMBER (e.g. OMIM 154700), but
+      // _affectedNodes keys, DOM values and strict `d.uuid === uuid` checks are all strings — a
+      // number would silently fail to match and lose case counts / the status toggle / the pattern.
+      uuid = String(explicitUuid);
+      legend.registerDisorderUuid(uuid, name);
+    } else {
+      uuid = legend.getUuidForName(name);
+    }
+    var out = { uuid: uuid, name: name, status: status };
+    if (needsRepair) {
+      out.needsRepair = true;
+    }
+    if (synthetic) {
+      out.synthetic = true;
+    }
+    return out;
   },
 
   /**
@@ -725,55 +885,88 @@ var Person = Class.create(AbstractPerson, {
      * termNameIsStorable before touching either.
      */
   addDisorder: function(disorder) {
-    if (typeof disorder != 'object') {
-      disorder = editor.getDisorderLegend().getDisorder(disorder);
+    var entry = this._normalizeDisorder(disorder);
+    if (!entry) {
+      return;
     }
-    if(!this.hasDisorder(disorder.getDisorderID())) {
-      editor.getDisorderLegend().addCase(disorder.getDisorderID(), disorder.getName(), this.getID());
-      this.getDisorders().push(disorder.getDisorderID());
-    } else {
-      alert(I18n.t('This person already has the specified disorder'));
+    if (this.hasDisorder(entry.uuid)) {
+      // Same disease (same uuid) already present. Do not alert on undo/load replays; only a live,
+      // interactive duplicate deserves the warning — but there is no reliable signal here for that,
+      // and the old alert fired on the picker path only. Keep it quiet to avoid undo-time popups.
+      return;
     }
+    editor.getDisorderLegend().addCase(entry.uuid, entry.name, this.getID());
+    this.getDisorders().push(entry);
 
-    // if any "real" disorder has been added
-    // the virtual "affected" disorder should be automatically removed
+    // Adding a real disease supersedes a lone synthetic placeholder (generic "Affected" / orphan
+    // carrier), the same way the old code auto-dropped the virtual 'affected' disorder.
     if (this.getDisorders().length > 1) {
-      this.removeDisorder('affected');
-    }
-  },
-
-  /**
-     * Removes disorder from the list of this node's disorders and updates the Legend.
-     *
-     * @method removeDisorder
-     * @param {Number} disorderID id of the disorder to be removed
-     */
-  removeDisorder: function(disorderID) {
-    if(this.hasDisorder(disorderID)) {
-      editor.getDisorderLegend().removeCase(disorderID, this.getID());
-      this._disorders = this.getDisorders().without(disorderID);
-    } else {
-      if (disorderID != 'affected') {
-        alert(I18n.t('This person doesn\'t have the specified disorder'));
+      for (var i = this.getDisorders().length - 2; i >= 0; i--) {
+        if (this._isSyntheticDisorder(this.getDisorders()[i])) {
+          this.removeDisorder(this.getDisorders()[i].uuid);
+        }
       }
     }
   },
 
   /**
-     * Sets the list of disorders of this person to the given list
+     * Removes the disorder with the given uuid from this node and updates the Legend.
+     *
+     * @method removeDisorder
+     * @param {String} disorderUuid uuid of the disorder to remove (a disorder object is also
+     *        accepted, for convenience)
+     */
+  removeDisorder: function(disorderUuid) {
+    if (disorderUuid && typeof disorderUuid == 'object') {
+      disorderUuid = disorderUuid.uuid;
+    }
+    if (this.hasDisorder(disorderUuid)) {
+      editor.getDisorderLegend().removeCase(disorderUuid, this.getID());
+      this._disorders = this.getDisorders().filter(function(d) {
+        return d.uuid !== disorderUuid;
+      });
+    }
+  },
+
+  /**
+     * Sets the list of disorders of this person to the given list. Tolerates both the new-model
+     * objects and any legacy shape addDisorder accepts (double-read), so an old undo stack or an
+     * un-migrated file replayed through here does not throw or drop diagnoses.
      *
      * @method setDisorders
-     * @param {Array} disorders List of Disorder objects
+     * @param {Array} disorders List of disorder objects / Disorder instances / id strings
      */
   setDisorders: function(disorders) {
+    // The disease picker only round-trips { uuid, name } — it has no per-disorder status control
+    // (that is F1c). Snapshot the current statuses so a picker-driven rebuild does not silently
+    // downgrade a carrier to affected. An explicit status on an incoming object (load / undo /
+    // migration) still wins over the snapshot.
+    var prior = {};
+    this.getDisorders().forEach(function(d) {
+      prior[d.uuid] = d;
+    });
     for(var i = this.getDisorders().length-1; i >= 0; i--) {
-      this.removeDisorder( this.getDisorders()[i] );
+      this.removeDisorder( this.getDisorders()[i].uuid );
     }
-    for(var i = 0; i < disorders.length; i++) {
-      this.addDisorder( disorders[i] );
+    if (disorders) {
+      for(var j = 0; j < disorders.length; j++) {
+        var incoming = disorders[j];
+        var explicitStatus = (incoming && typeof incoming == 'object'
+                              && (incoming.status === 'carrier' || incoming.status === 'affected'));
+        this.addDisorder( incoming );
+        if (!explicitStatus) {
+          var last = this.getDisorders()[this.getDisorders().length - 1];
+          if (last && prior.hasOwnProperty(last.uuid)) {
+            last.status = prior[last.uuid].status;
+            if (prior[last.uuid].needsRepair) {
+              last.needsRepair = true;
+            }
+          }
+        }
+      }
     }
     this.getGraphics().updateDisorderShapes();
-    this.setCarrierStatus(); // update carrier status
+    editor.getDisorderLegend().refresh();   // per-status counts / swatches / fill key
   },
 
   /**
@@ -948,14 +1141,16 @@ var Person = Class.create(AbstractPerson, {
   },
 
   /**
-     * Returns disorder with given id if this person has it. Returns null otherwise.
+     * Returns true if this person has a disorder with the given uuid.
      *
-     * @method getDisorderByID
-     * @param {Number} id Disorder ID, taken from the OMIM database
-     * @return {Disorder}
+     * @method hasDisorder
+     * @param {String} uuid disorder uuid (the legend/colour key)
+     * @return {Boolean}
      */
-  hasDisorder: function(id) {
-    return (this.getDisorders().indexOf(id) != -1);
+  hasDisorder: function(uuid) {
+    return this.getDisorders().some(function(d) {
+      return d.uuid === uuid;
+    });
   },
 
   /**
@@ -1018,8 +1213,8 @@ var Person = Class.create(AbstractPerson, {
     // maybe: use editor.getGraph().hasNonPlaceholderNonAdoptedChildren() ?
     var disorders = [];
     this.getDisorders().forEach(function(disorder) {
-      var disorderName = editor.getDisorderLegend().getDisorder(disorder).getName();
-      disorders.push({id: disorder, value: disorderName});
+      // Name lives on the entry now; the menu keys picker rows by uuid.
+      disorders.push({id: disorder.uuid, value: disorder.name});
     });
     var hpoTerms = [];
     this.getHPO().forEach(function(hpo) {
@@ -1045,15 +1240,11 @@ var Person = Class.create(AbstractPerson, {
       }
     }
 
-    var inactiveCarriers = [];
-    if (disorders.length > 0) {
-      if (disorders.length != 1 || disorders[0].id != 'affected') {
-        inactiveCarriers = [''];
-      }
-    }
-    if (this.getLifeStatus() == 'aborted' || this.getLifeStatus() == 'miscarriage' || this.getLifeStatus() == 'ectopic') {
-      inactiveCarriers.push('presymptomatic');
-    }
+    // Affected / carrier is set PER DISORDER (the disease-picker toggle) now — the old symbol-level
+    // "Carrier status" radio is gone (it flattened a mixed affected/carrier patient). The only
+    // remaining symbol-level state is pre-symptomatic (the vertical line), a checkbox; it does not
+    // apply to a pregnancy loss (no line is drawn there).
+    var presymInactive = (this.getLifeStatus() == 'aborted' || this.getLifeStatus() == 'miscarriage' || this.getLifeStatus() == 'ectopic');
 
     var inactiveLostContact = this.isProband() || !editor.getGraph().isRelatedToProband(this.getID());
 
@@ -1073,7 +1264,7 @@ var Person = Class.create(AbstractPerson, {
       // A pregnancy/loss is the product of assisted reproduction, never a donor or carrier itself.
       art_role:      {value : this.getArtRole(), inactive: this.isFetus()},
       date_of_birth: {value : this.getBirthDate(), inactive: this.isFetus()},
-      carrier:       {value : this.getCarrierStatus(), disabled: inactiveCarriers},
+      presymptomatic: {value : this.getPresymptomatic(), inactive: presymInactive},
       disorders:     {value : disorders},
       candidate_genes: {value : this.getGenes()},
       genotype:      {value : this.getGenotype()},
@@ -1167,8 +1358,10 @@ var Person = Class.create(AbstractPerson, {
     if (this._evaluated) {
       info['evaluated'] = this._evaluated;
     }
-    if (this._carrierStatus) {
-      info['carrierStatus'] = this._carrierStatus;
+    // F1b: carrierStatus is gone. affected/carrier live on each disorder (info['disorders'] above);
+    // pre-symptomatic is its own symbol-level boolean.
+    if (this._presymptomatic) {
+      info['presymptomatic'] = true;
     }
     if (this.getLostContact()) {
       info['lostContact'] = this.getLostContact();
@@ -1244,7 +1437,13 @@ var Person = Class.create(AbstractPerson, {
       if(info.hasOwnProperty('evaluated') && this._evaluated != info.evaluated) {
         this.setEvaluated(info.evaluated);
       }
-      if(info.hasOwnProperty('carrierStatus') && this._carrierStatus != info.carrierStatus) {
+      if (info.hasOwnProperty('presymptomatic')) {
+        this.setPresymptomatic(info.presymptomatic);
+      }
+      // Defensive legacy path: a carrierStatus that reached here un-migrated (an old undo frame, or
+      // a file that bypassed the VersionUpdater). The migration normally strips it. setCarrierStatus
+      // maps it onto the per-condition model. Guard against re-processing after disorders were set.
+      if (info.hasOwnProperty('carrierStatus')) {
         this.setCarrierStatus(info.carrierStatus);
       }
       if (info.hasOwnProperty('lostContact') && this.getLostContact() != info.lostContact) {
@@ -1270,5 +1469,11 @@ var Person = Class.create(AbstractPerson, {
 
 //ATTACHES CHILDLESS BEHAVIOR METHODS TO THIS CLASS
 Person.addMethods(ChildlessBehavior);
+
+// Synthetic disorder names used to represent symbol-level states that carry no real disease name.
+// These MUST match the strings the migration writes (model/disorderStatusMigration.js) so a
+// migrated placeholder and a freshly-synthesised one collapse to the same legend row/uuid.
+Person.GENERIC_AFFECTED_NAME = 'Affected';       // generic "affected, unspecified" (NSGC Fig 2)
+Person.CARRIER_PLACEHOLDER_NAME = '疾病A';         // orphan-carrier placeholder (needsRepair, D5)
 
 export default Person;

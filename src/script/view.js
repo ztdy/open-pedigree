@@ -453,6 +453,12 @@ var View = Class.create({
     this._nodeMap = newNodeMap;
 
     this._lineSet.replaceIDs(changedIdsSet);
+
+    // The legends track which node IDs carry each disorder/gene/phenotype; remap those too, or a
+    // renumbered node drops out of its case count and a later recolor dereferences a stale ID.
+    editor.getDisorderLegend().replaceNodeIds(changedIdsSet);
+    editor.getGeneLegend().replaceNodeIds(changedIdsSet);
+    editor.getHPOLegend().replaceNodeIds(changedIdsSet);
   },
 
   /**

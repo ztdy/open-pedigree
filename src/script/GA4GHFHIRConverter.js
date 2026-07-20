@@ -1,5 +1,11 @@
 import BaseGraph from 'pedigree/model/baseGraph';
 import RelationshipTracker from 'pedigree/model/relationshipTracker';
+import Disorder from 'pedigree/disorder';
+
+// F1: per-disorder affected/carrier status is carried on each exported Condition via this extension
+// so a mixed affected-X / carrier-Y patient round-trips without collapsing to one symbol-level
+// status. External FHIR without it imports as 'affected' (a Condition IS a phenotype).
+const DISORDER_STATUS_EXT = 'https://github.com/ztdy/open-pedigree/fhir/disorder-status';
 
 
 
@@ -592,10 +598,25 @@ GA4GHFHIRConverter.extractDataFromCondition = function (conditionResource, nodeD
     let conditionToAdd = fhirTerminologyHelper.getDisorderFromCodeableConcept(conditionResource.code, false);
 
     if (conditionToAdd){
+      // F1: per-disorder status from our extension (default 'affected' — a Condition IS a
+      // phenotype); a coded id keeps its code as the uuid so the standard identifier round-trips.
+      let status = 'affected';
+      if (Array.isArray(conditionResource.extension)) {
+        for (let e = 0; e < conditionResource.extension.length; e++) {
+          let ext = conditionResource.extension[e];
+          if (ext && ext.url === DISORDER_STATUS_EXT && (ext.valueCode === 'carrier' || ext.valueCode === 'affected')) {
+            status = ext.valueCode;
+          }
+        }
+      }
+      let sid = Disorder.sanitizeID(String(conditionToAdd));
+      let entry = Disorder.isCodedID(sid)
+        ? { uuid: sid, name: conditionToAdd, status: status }
+        : { name: conditionToAdd, status: status };
       if ('disorders' in nodeData.properties){
-        nodeData.properties.disorders.push(conditionToAdd);
+        nodeData.properties.disorders.push(entry);
       } else {
-        nodeData.properties.disorders = [conditionToAdd];
+        nodeData.properties.disorders = [entry];
       }
     } else {
       console.log('No disorder found in ', conditionResource.code);
@@ -1560,14 +1581,31 @@ GA4GHFHIRConverter.addConditions = function (nodeProperties, ref, condtions) {
       // line threw for anyone carrying a disorder, i.e. it broke GA4GH export for essentially
       // every real pedigree, silently (exportSelector does not catch). Upstream since cb207f6
       // (2022). It went unnoticed because no GA4GH test ever gave a person a disorder.
+      // F1: a disorder is a { uuid, name, status } object (was a bare id string). For a CODED
+      // disorder the uuid IS the sanitized OMIM/Orphanet code — pass THAT so the Condition carries
+      // the standard system+code (not free text); free-text disorders pass their name. The FHIR
+      // helper decodes the id, so pass the desanitized code.
+      let disorderEntry = disorders[i];
+      let disorderCode;
+      if (disorderEntry && typeof disorderEntry === 'object') {
+        disorderCode = (disorderEntry.uuid != null && Disorder.isCodedID(disorderEntry.uuid))
+          ? Disorder.desanitizeID(disorderEntry.uuid) : disorderEntry.name;
+      } else {
+        disorderCode = disorderEntry;
+      }
       let fhirCondition = {
         'resourceType': 'Condition',
         'id': generateUUID(),
         'subject': {
           'reference': this.patRefAsRef(ref)
         },
-        code: fhirTerminologyHelper.getCodeableConceptFromDisorder(disorders[i])
+        code: fhirTerminologyHelper.getCodeableConceptFromDisorder(disorderCode)
       };
+      // Per-disorder status so a mixed affected/carrier patient round-trips (see DISORDER_STATUS_EXT).
+      let entryStatus = (disorderEntry && typeof disorderEntry === 'object') ? disorderEntry.status : null;
+      if (entryStatus === 'carrier' || entryStatus === 'affected') {
+        fhirCondition.extension = [{ url: DISORDER_STATUS_EXT, valueCode: entryStatus }];
+      }
 
       conditionsForRef.push(fhirCondition);
     }
@@ -1629,9 +1667,23 @@ GA4GHFHIRConverter.addObservations = function (nodeProperties, ref, observations
   // Pre-symptomatic:
   //   Code: 24800002 | Carrier state, disease not expressed |
   //   Value: empty
-  if (nodeProperties['carrierStatus']) {
+  //
+  // F1: emit a SYMBOL-LEVEL observation only. Pre-symptomatic (a whole-symbol vertical line) is a
+  // person-level state → observation. Per-disorder CARRIER status is NOT a person-level fact — it
+  // rides on each Condition's extension (above), so a mixed affected-X / carrier-Y patient no longer
+  // collapses to one status. The one remaining person-level 'carrier' case is a LEGACY graph whose
+  // disorders are bare strings (no per-disorder objects to carry the extension).
+  let hasNewFormatDisorders = Array.isArray(nodeProperties['disorders'])
+    && nodeProperties['disorders'].some(function(d) { return d && typeof d === 'object'; });
+  let derivedCarrierStatus = '';
+  if (nodeProperties['presymptomatic'] || nodeProperties['carrierStatus'] === 'presymptomatic') {
+    derivedCarrierStatus = 'presymptomatic';
+  } else if (nodeProperties['carrierStatus'] === 'carrier' && !hasNewFormatDisorders) {
+    derivedCarrierStatus = 'carrier';   // legacy person-level carrier, best-effort
+  }
+  if (derivedCarrierStatus) {
     let carrierCode = undefined;
-    if (nodeProperties['carrierStatus'] === 'carrier') {
+    if (derivedCarrierStatus === 'carrier') {
       carrierCode = {
         'coding': [{
           'system': 'http://snomed.info/sct',
@@ -1639,7 +1691,7 @@ GA4GHFHIRConverter.addObservations = function (nodeProperties, ref, observations
           'display': 'Carrier state, disease expressed'
         }]
       };
-    } else if (nodeProperties['carrierStatus'] === 'presymptomatic') {
+    } else if (derivedCarrierStatus === 'presymptomatic') {
       carrierCode = {
         'coding': [{
           'system': 'http://snomed.info/sct',
