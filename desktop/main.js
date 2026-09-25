@@ -201,7 +201,12 @@ const winState = new WeakMap(); // BrowserWindow -> { dirty, forceClose, closing
 function createWindow() {
   // Drop the default Electron menu bar (File/Edit/View/Window) — it exposes nothing useful
   // for this app and just clutters the window. All actions live in the in-page UI.
-  Menu.setApplicationMenu(null);
+  // macOS is the exception: there the menu bar is global and also carries the standard
+  // shortcuts — with no menu, Cmd+C/V/X/A/Z in text fields, Cmd+Q and Cmd+W all go dead.
+  // Keep a minimal system menu there (roles only; the app defines no custom shortcuts).
+  Menu.setApplicationMenu(process.platform === 'darwin'
+    ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
+    : null);
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -659,8 +664,12 @@ if (require.main === module) {
     });
   }
 
+  // Quit when the (single) window closes on every platform, macOS included. The usual mac
+  // "stay alive in the Dock" convention buys nothing for a one-window app and breaks Cmd+Q
+  // with unsaved changes: the close guard cancels the quit, and after the user picks
+  // Discard/Save only the window would close, leaving a windowless app running.
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    app.quit();
   });
 }
 

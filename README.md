@@ -1,4 +1,4 @@
-# Open Pedigree · Windows 桌面版
+# Open Pedigree · Windows / macOS 桌面版
 
 **简体中文** | [English](README.en.md)
 
@@ -6,9 +6,9 @@
   <img src="docs/img/hero.png" width="720" alt="桌面版编辑器：家系图、proband 箭头与临床图例"/>
 </p>
 
-[Open Pedigree](https://github.com/phenotips/open-pedigree)（PhenoTips 出品的浏览器版家系图 / 家谱编辑器）的**双击即用 Windows 桌面版**。**完全离线**运行——不需要 Web 服务器、不需要联网——家系数据以**本地文件**形式保存。
+[Open Pedigree](https://github.com/phenotips/open-pedigree)（PhenoTips 出品的浏览器版家系图 / 家谱编辑器）的**双击即用 Windows / macOS 桌面版**。**完全离线**运行——不需要 Web 服务器、不需要联网——家系数据以**本地文件**形式保存。
 
-提供标准 **NSIS 安装版**和**免安装 portable `.exe`** 两种形态，下载见 [Releases](../../releases) 页面。
+Windows 提供标准 **NSIS 安装版**和**免安装 portable `.exe`**；macOS 提供适配 Intel 与 Apple Silicon 的通用 **DMG**。下载见 [Releases](../../releases) 页面。
 
 ---
 
@@ -16,8 +16,10 @@
 
 原版 Open Pedigree 是一个浏览器应用，需要起 Web 服务器，且疾病 / 基因 / 表型的联想依赖在线的 XWiki / REST 后端。本版本把它做成了自包含的桌面程序，并新增以下功能。
 
-### 🖥️ 原生 Windows 桌面运行
+### 🖥️ 原生 Windows / macOS 桌面运行
 双击启动——无需 Node、无需服务器、无需配置浏览器。在硬化的 Electron 壳（`contextIsolation`、`sandbox`、关闭 `nodeIntegration`）里本地运行编辑器。
+
+Mac 版支持 **macOS 12 及以上**，同一安装包支持 Intel 与 Apple Silicon。由于当前没有 Apple Developer ID，首次打开需要按 [Mac 安装说明](desktop/MAC_INSTALL.zh-CN.md)在“隐私与安全性”中确认放行。
 
 ### 📁 本地家系库
 <img src="docs/img/library.png" width="640" alt="本地家系库中的家系卡片"/>
@@ -27,7 +29,7 @@
 ### 💾 便携——数据跟着软件走
 <img src="docs/img/data-location.png" width="560" alt="首次运行选择数据目录" />
 
-首次运行时可选择数据存放位置。**portable** 版会把数据存放在 `.exe` 旁边，于是软件 + 家系数据整包塞进 U 盘即可随身携带。你也可以指定任意目录。
+首次运行时可选择数据存放位置。Windows **portable** 版会把数据存放在 `.exe` 旁边，于是软件 + 家系数据整包塞进 U 盘即可随身携带。你也可以指定任意目录。
 
 ### 🔎 离线基因 & 表型联想
 <p>
@@ -52,7 +54,7 @@
 界面支持**简体中文与英文**，右上角一键切换，选择会被记住。切换语言**不丢数据**——图谱、家系库与已填字段都原样保留。
 
 ### 🔄 内置自动更新
-软件启动时会**静默检查新版本**，有更新时在应用内提示并一键升级，无需手动去 Releases 页面下载覆盖。
+软件启动时会**静默检查新版本**。Windows 安装版支持应用内升级；Windows portable 和当前未公证的 Mac 版会提示并打开下载页，Mac 用户下载新 DMG 后替换“应用程序”中的旧版即可。
 
 ### 🩺 符合 NSGC 2022 的临床标注
 按 [NSGC / PSTF 2022 包容性家系图命名规范](https://onlinelibrary.wiley.com/doi/10.1002/jgc4.1621)扩展了个体标注：
@@ -78,15 +80,15 @@
 
 ## 功能速览
 
-- 🖥️ **原生 Windows 桌面运行**——双击即用，无需服务器或浏览器
+- 🖥️ **原生 Windows / macOS 桌面运行**——双击即用，无需服务器或浏览器
 - 📁 **本地家系库**——保存 / 搜索 / 排序 / 重命名 / 复制 / 删除，附临床摘要
-- 💾 **便携**——数据存放在 `.exe` 旁边（U 盘即走）；首次运行可选目录
+- 💾 **Windows 便携版**——数据存放在 `.exe` 旁边（U 盘即走）；首次运行可选目录
 - 🔎 **离线基因（HGNC）与表型（HPO）联想**——无需联网
 - 🎯 **proband 指定**——权威（驱动亲缘计算 + GA4GH/FHIR 导出），单步可撤销
 - 🎨 **图例改色**——随家系保存与恢复
 - 📥 **导入 PED / GEDCOM / BOADICEA / GA4GH FHIR** 为新家系
 - 🌐 **中 / 英双语界面**——一键切换、记住选择、切换不丢数据
-- 🔄 **内置自动更新**——启动静默检查、应用内一键升级
+- 🔄 **内置更新检查**——Windows 安装版可应用内升级；portable / Mac 打开下载页手动替换
 - 🩺 **NSGC 2022 临床标注**——出生指定性别（AMAB/AFAB/UAAB）、异位妊娠（ECT）、合子性未知双胞胎（?）、**按病记录患病/携带 + 每病填充图案（黑白可区分）**
 - 🧬 **家系级临床快选**——一键复用家系里已有的疾病 / 基因 / 表型
 - ✅ **一致性检查**——非阻塞、只报铁错的家系逻辑自查

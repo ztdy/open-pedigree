@@ -143,6 +143,10 @@ const MESSAGES = {
     'Update available': '有可用更新',
     'The portable build cannot update itself — download the new version from the releases page.':
       '便携版无法自我更新 —— 请从发布页下载新版本。',
+    'Download the new version from the releases page and replace the app in Applications.':
+      '请到发布页下载新版本，替换“应用程序”中的旧版。',
+    'No update information is published for this system yet.': '暂未发布适用于本系统的更新信息。',
+    'Check the download page for newer versions.': '请到下载页查看是否有新版本。',
 
     // ---- language switcher (library page) ----
     'Language': '语言',

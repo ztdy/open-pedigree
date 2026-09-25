@@ -10,6 +10,7 @@
 // NSIS install  -> full flow: download in the background, then offer to restart+install.
 // Portable build -> electron-updater cannot replace a running portable .exe, so we only
 //                   check and, if a newer version exists, point the user at the download.
+// macOS (unsigned) -> same as portable; see isNotifyOnly().
 
 const { app, dialog, shell } = require('electron');
 const i18n = require('./i18n');
@@ -21,6 +22,13 @@ const RELEASES_URL = 'https://github.com/ztdy/open-pedigree/releases/latest';
 // electron-builder marks portable builds with this env var at runtime.
 function isPortable() {
   return !!process.env.PORTABLE_EXECUTABLE_DIR;
+}
+
+// macOS builds are not Developer-ID signed/notarized (no Apple developer account), and
+// Squirrel.Mac refuses to install an update into an unsigned app. So on macOS we take the
+// portable path too: check only, and point the user at the download page.
+function isNotifyOnly() {
+  return isPortable() || process.platform === 'darwin';
 }
 
 // Parse a full x.y.z[-pre][+build] version. END-ANCHORED so trailing junk
@@ -71,6 +79,19 @@ function isNewerVersion(remote, current) {
 }
 
 let started = false;
+// True while a manual "Check for updates" is running. It shares the electron-updater singleton
+// with the background check, whose permanent update-available listener would otherwise pop a
+// second "update available" dialog on top of the manual one.
+let manualCheckInFlight = false;
+let errorSinkAttached = false;
+
+// electron-updater emits 'error' on the singleton; with no listener that is an unhandled error.
+// Attach exactly one no-op sink (failures are handled via the rejected checkForUpdates promise).
+function attachErrorSink(autoUpdater) {
+  if (errorSinkAttached) { return; }
+  errorSinkAttached = true;
+  autoUpdater.on('error', () => {});
+}
 
 // Call once, after the first window exists. getWindow() should return the window to
 // parent dialogs to (may return null/undefined — dialogs then show unparented).
@@ -89,9 +110,9 @@ function initAutoUpdate(getWindow) {
 
   autoUpdater.setFeedURL(FEED);
   // Never interrupt on "no update available" or transient network/errors.
-  autoUpdater.on('error', () => {});
+  attachErrorSink(autoUpdater);
 
-  if (isPortable()) {
+  if (isNotifyOnly()) {
     autoUpdater.autoDownload = false;
     autoUpdater.on('update-available', (info) => notifyPortable(getWindow, info));
   } else {
@@ -126,6 +147,7 @@ async function notifyPortable(getWindow, info) {
   // but if a promoted latest.yml ever regressed below the running build, never
   // nag the user to "update" to an older release.
   if (info && info.version && !isNewerVersion(info.version, app.getVersion())) { return; }
+  if (manualCheckInFlight) { return; } // the manual check shows its own result dialog
   const win = getWindow && getWindow();
   const { response } = await dialog.showMessageBox(win || undefined, {
     type: 'info',
@@ -135,7 +157,9 @@ async function notifyPortable(getWindow, info) {
     noLink: true,
     title: t('Update available'),
     message: t('Open Pedigree ') + info.version + t(' is available.'),
-    detail: t('The portable build cannot update itself — download the new version from the releases page.')
+    detail: process.platform === 'darwin'
+      ? t('Download the new version from the releases page and replace the app in Applications.')
+      : t('The portable build cannot update itself — download the new version from the releases page.')
   });
   if (response === 0) shell.openExternal(RELEASES_URL).catch(() => {});
 }
@@ -166,8 +190,9 @@ async function checkForUpdatesManual(getWindow) {
   }
   autoUpdater.setFeedURL(FEED);
   autoUpdater.autoDownload = false;
-  autoUpdater.on('error', () => {});   // handled via the rejected promise below
+  attachErrorSink(autoUpdater);   // failures are handled via the rejected promise below
 
+  manualCheckInFlight = true;
   try {
     const result = await Promise.race([
       autoUpdater.checkForUpdates(),
@@ -194,8 +219,27 @@ async function checkForUpdatesManual(getWindow) {
       });
     }
   } catch (e) {
-    await couldNotCheck(win);
+    // The release exists but carries no feed for this platform (e.g. no latest-mac.yml yet):
+    // the network is fine, so don't tell the user they may be offline.
+    if (e && e.code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND') {
+      await noFeedForPlatform(win);
+    } else {
+      await couldNotCheck(win);
+    }
+  } finally {
+    manualCheckInFlight = false;
   }
+}
+
+async function noFeedForPlatform(win) {
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'info', buttons: [t('Open download page'), t('OK')],
+    defaultId: 1, cancelId: 1, noLink: true,
+    title: t('Check for updates'),
+    message: t('No update information is published for this system yet.'),
+    detail: t('Check the download page for newer versions.')
+  });
+  if (response === 0) { shell.openExternal(RELEASES_URL).catch(() => {}); }
 }
 
 async function couldNotCheck(win) {

@@ -1,8 +1,8 @@
 {
   "name": "open-pedigree-desktop",
   "productName": "Open Pedigree",
-  "version": "0.2.0",
-  "description": "Windows desktop app for Open Pedigree — offline pedigree drawing, save and import.",
+  "version": "0.2.1",
+  "description": "Desktop app (Windows / macOS) for Open Pedigree — offline pedigree drawing, save and import.",
   "private": true,
   "author": "Open Pedigree Desktop",
   "license": "LGPL-2.1",
@@ -14,7 +14,8 @@
     "dist": "electron-builder --win",
     "dist:portable": "electron-builder --win portable",
     "dist:nsis": "electron-builder --win nsis",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "dist:mac": "electron-builder --mac --universal"
   },
   "devDependencies": {
     "electron": "^41.10.1",
@@ -101,6 +102,32 @@
     },
     "portable": {
       "artifactName": "OpenPedigree-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.medical",
+      "minimumSystemVersion": "12.0",
+      "icon": "build/icon.icns",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "OpenPedigree-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Open Pedigree ${version}",
+      "artifactName": "OpenPedigree-${version}-mac.${ext}"
     }
   },
   "dependencies": {

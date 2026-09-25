@@ -1,4 +1,4 @@
-# Open Pedigree — Windows Desktop
+# Open Pedigree — Windows / macOS Desktop
 
 [简体中文](README.md) | **English**
 
@@ -6,12 +6,12 @@
   <img src="docs/img/hero.png" width="720" alt="Open Pedigree desktop editor with a family, proband arrow and clinical legends"/>
 </p>
 
-A double‑click **Windows desktop** build of [Open Pedigree](https://github.com/phenotips/open-pedigree),
+A double‑click **Windows / macOS desktop** build of [Open Pedigree](https://github.com/phenotips/open-pedigree),
 the PhenoTips browser‑based pedigree (family‑tree) editor. It runs **fully offline** — no web server,
 no internet — and stores your pedigrees as **local files**.
 
-Ships as a standard **NSIS installer** and a **portable `.exe`**. See the
-[Releases](../../releases) page for downloads.
+Windows ships as a standard **NSIS installer** and a **portable `.exe`**; macOS ships as one
+universal **DMG** for Intel and Apple Silicon. See the [Releases](../../releases) page for downloads.
 
 ---
 
@@ -21,9 +21,13 @@ The original Open Pedigree is a browser app that needs a web server, and it reli
 XWiki / REST backend for its disease, gene and phenotype lookups. This build turns it into a
 self‑contained desktop program and adds the features below.
 
-### 🖥️ Runs as a native Windows app
+### 🖥️ Runs as a native Windows / macOS app
 Double‑click to launch — no Node, no server, no browser setup. A hardened Electron shell
 (`contextIsolation`, `sandbox`, no `nodeIntegration`) runs the editor locally.
+
+The Mac build supports **macOS 12 or later** on both Intel and Apple Silicon. It does not yet have
+an Apple Developer ID, so the first launch must be allowed in Privacy & Security as described in
+the [Mac installation guide](desktop/MAC_INSTALL.zh-CN.md).
 
 ### 📁 Local pedigree library
 <img src="docs/img/library.png" width="640" alt="Local library with a saved pedigree card"/>
@@ -35,7 +39,7 @@ HPO / disorder counts, number of people).
 ### 💾 Portable — your data travels with the app
 <img src="docs/img/data-location.png" width="560" alt="First-run data folder chooser"/>
 
-On first run you choose where your data lives. **Portable** builds store it right next to the
+On first run you choose where your data lives. Windows **Portable** builds store it right next to the
 `.exe`, so the whole thing — app *and* pedigrees — fits on a USB stick. You can also point it at
 any folder you like.
 
@@ -71,8 +75,9 @@ choice is remembered. Switching languages **keeps your data** — the pedigree, 
 filled‑in field stay exactly as they were.
 
 ### 🔄 Built‑in auto‑update
-On launch the app **quietly checks for a newer version** and, when one is available, offers an
-in‑app one‑click upgrade — no need to visit the Releases page and reinstall by hand.
+On launch the app **quietly checks for a newer version**. The installed Windows build supports an
+in‑app upgrade; Windows Portable and the current unnotarized Mac build open the download page so
+the user can replace the application manually.
 
 ### 🩺 NSGC 2022 inclusive clinical notation
 Individual annotations follow the
@@ -116,15 +121,15 @@ from the structure alone.
 
 ## Feature summary
 
-- 🖥️ **Native Windows app** — double‑click, no server or browser needed
+- 🖥️ **Native Windows / macOS app** — double‑click, no server or browser needed
 - 📁 **Local pedigree library** — save / search / sort / rename / duplicate / delete, with clinical summaries
-- 💾 **Portable** — data lives next to the `.exe` (USB‑ready); pick your folder on first run
+- 💾 **Windows Portable** — data lives next to the `.exe` (USB‑ready); pick your folder on first run
 - 🔎 **Offline gene (HGNC) & phenotype (HPO) autocomplete** — no internet required
 - 🎯 **Proband designation** — authoritative (drives relatedness + GA4GH/FHIR export), single‑step undo
 - 🎨 **Recolor legend entries** — saved and restored with the pedigree
 - 📥 **Import PED / GEDCOM / BOADICEA / GA4GH FHIR** as a new pedigree
 - 🌐 **Bilingual UI (English / 简体中文)** — one‑click switch, remembered, no data loss
-- 🔄 **Built‑in auto‑update** — quiet check on launch, in‑app one‑click upgrade
+- 🔄 **Built‑in update check** — in-app upgrade on installed Windows; manual download for Portable / Mac
 - 🩺 **NSGC 2022 clinical notation** — sex assigned at birth (AMAB/AFAB/UAAB), ectopic pregnancy (ECT), unknown‑zygosity twins (?), **per-condition affected/carrier status + per-disease fill patterns (B&W-distinguishable)**
 - 🧬 **Family-wide clinical quick-add** — reuse the family's existing disorders / genes / phenotypes in one click
 - ✅ **Consistency check** — non-blocking, false-positive-free pedigree logic check

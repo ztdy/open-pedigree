@@ -1,6 +1,6 @@
 # Open Pedigree Desktop
 
-把 open-pedigree（PhenoTips 家系图编辑器）封装为 Windows 桌面软件的 Electron 壳。
+把 open-pedigree（PhenoTips 家系图编辑器）封装为 Windows / macOS 桌面软件的 Electron 壳。
 详见根目录 `DESKTOP_PLAN.md`。
 
 进度：
@@ -14,7 +14,7 @@
 - **M3 导入加固** — ✅ 「导入为新家系」(library→main 选文件→建 doc→编辑器自动导入)、格式判定(`importDetect.js`)、失败回滚、8MB 上限；S3 18/18（4 格式 PED/GEDCOM/BOADICEA/GA4GH + 检测 + 回滚，`test-s3-import.js`）
 - **Windows 实机验证** — ✅ 真 Windows 运行：库窗口、AppData 建库、DocumentStore 13/13、S1 5/5、S3 18/18（无 WSL 的 loadFile flake）
 - **M2+M3 关键节点 Codex 审核** — ✅ 10 项高/中危(导入成功/失败事件分离、视图状态机竞态、保存并关闭 clean 校验、文件名ID权威等)全修复并验证：S2b **真实 main.js 状态机** 10/10（allowlist 拦截 / pendingOpen 原子 / 导航提交顺序 / clean 打开不弹框 / 无串档）+ S3 18/18，均 Windows 实机
-- **M4 Windows 发布** — ✅ electron-builder 26 产 **NSIS 安装版**(默认 per-user 免管理员、可选 all-users、可选目录、桌面/开始菜单快捷方式) + **portable exe**，各约 108MB；图标嵌入；打包实机冒烟通过（库视图启动 + 默认 `%APPDATA%\Open Pedigree\pedigrees` 建库 + 中文 Unicode 路径 + portable）。见 `PACKAGING.md`、CI `.github/workflows/desktop-release.yml`
+- **M4 桌面发布** — ✅ Windows 产 **NSIS 安装版** + **portable exe**；macOS 产 Intel / Apple Silicon 通用的 **DMG + ZIP**（macOS 12+，ad-hoc 签名）。CI 在 Windows、macOS 产物都验证完成后才发布标签版本。见 `PACKAGING.md`、`MAC_INSTALL.zh-CN.md`、CI `.github/workflows/desktop-release.yml`
 - **M4 关键节点 Codex 审核 + 修复** — ✅ Codex 查出 1 高/5 中/2 低,全部修复并验证：
   - **升级 Electron 31(EOL)→41(受支持 major)** — 全套 Windows 回归无回归：smoke 7/7 + S1 5/5 + S2b 10/10 + S3 18/18 + S4 6/6
   - **安全 fuses**(`electronFuses`)：`RunAsNode`/`NodeOptions`/`NodeCliInspect` 关、`OnlyLoadAppFromAsar`/`CookieEncryption` 开。⚠️ `GrantFileProtocolExtraPrivileges` 必须保持默认开(关掉会掐断 file:// 加载→窗口空白 `ERR_FILE_NOT_FOUND`）；`EmbeddedAsarIntegrity` 暂缓(在 eb26+electron41+Windows 组合下会破坏 file:// 加载,待兼容性处理)
@@ -25,7 +25,7 @@
   - Save 后底部弹绿色 **"✓ Saved"** toast(失败弹红色),不再无反馈
   - 去掉无用的原生菜单栏(File/Edit/View/Window)
   - library 卡片显示**临床摘要**:🧬 候选基因 + HPO/disorder/人数计数(主进程从 .opedigree graph 解析)
-  - **CI 签名 fail-closed** — tag 发布强制 `forceCodeSigning` + `Get-AuthenticodeSignature` 校验每个 PE + 显式 `CSC_IDENTITY_AUTO_DISCOVERY=false`;tag 版本必须==package.json;`npm ci` 锁定依赖(重建 lockfile);未用 font-awesome scss 排除;NSIS 提权与文档一致化
+  - **CI 发布保护** — tag 版本必须等于 `package.json`；Windows 和 macOS 产物先上传到 Draft Release，全部齐全后一次性发布。目前 Windows 未签名、macOS 为 ad-hoc 签名；配置正式证书后可启用严格签名校验
 
 ## 测试
 
